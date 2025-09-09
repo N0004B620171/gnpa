@@ -117,6 +117,6 @@
     "include": [
         "resources/js/**/*.ts",
         "resources/js/**/*.d.ts",
-        "resources/js/**/*.tsx",
+        "resources/js/**/*.tsx", "resources/js/pages/Eleves/Index.jsx", "resources/js/pages/Eleves/Edit.jsx", "resources/js/pages/Eleves/Create.jsx", "resources/js/app.jsx",
     ]
 }
