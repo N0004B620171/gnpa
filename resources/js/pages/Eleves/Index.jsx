@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import Layout from '@/Components/Layout'; // Import du Layout
 
 export default function Index() {
     const { eleves, flash } = usePage().props;
@@ -9,14 +10,14 @@ export default function Index() {
     // Filtrer les élèves selon les critères de recherche
     const filteredEleves = eleves.filter(eleve => {
         const matchesSearch = eleve.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            eleve.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            eleve.uid.toLowerCase().includes(searchTerm.toLowerCase());
+            eleve.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            eleve.uid.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesSexe = filterSexe === '' || eleve.sexe === filterSexe;
         return matchesSearch && matchesSexe;
     });
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+        <Layout title="Liste des élèves"> {/* Utilisation du Layout */}
             <div className="max-w-6xl mx-auto">
                 {/* En-tête */}
                 <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
@@ -30,8 +31,8 @@ export default function Index() {
                             </h1>
                             <p className="text-gray-600 mt-1">Gérez les élèves de votre établissement</p>
                         </div>
-                        
-                        <Link 
+
+                        <Link
                             href={route('eleves.create')}
                             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                         >
@@ -56,7 +57,7 @@ export default function Index() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>
-                        
+
                         <div className="relative">
                             <select
                                 value={filterSexe}
@@ -71,7 +72,7 @@ export default function Index() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
                             </svg>
                         </div>
-                        
+
                         <div className="bg-blue-50 rounded-lg p-3 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -141,7 +142,7 @@ export default function Index() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex items-center space-x-2">
-                                                    <Link 
+                                                    <Link
                                                         href={route('eleves.show', eleve.id)}
                                                         className="text-blue-600 hover:text-blue-900 p-1.5 rounded-md hover:bg-blue-50 transition-colors"
                                                         title="Voir détails"
@@ -151,8 +152,8 @@ export default function Index() {
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                         </svg>
                                                     </Link>
-                                                    
-                                                    <Link 
+
+                                                    <Link
                                                         href={route('eleves.edit', eleve.id)}
                                                         className="text-indigo-600 hover:text-indigo-900 p-1.5 rounded-md hover:bg-indigo-50 transition-colors"
                                                         title="Modifier"
@@ -161,7 +162,7 @@ export default function Index() {
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                         </svg>
                                                     </Link>
-                                                    
+
                                                     <Link
                                                         as="button"
                                                         method="delete"
@@ -194,6 +195,6 @@ export default function Index() {
                     </div>
                 </div>
             </div>
-        </div>
+        </Layout>
     );
 }

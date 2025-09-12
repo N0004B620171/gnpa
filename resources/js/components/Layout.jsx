@@ -1,21 +1,21 @@
-import { type SharedData } from '@/types';
+// components/Layout.jsx
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
-export default function Welcome() {
-    const { auth } = usePage<SharedData>().props;
+export default function Layout({ children, title = 'Xuxu' }) {
+    const { auth } = usePage().props;
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isServicesOpen, setIsServicesOpen] = useState(false);
 
     return (
         <>
-            <Head title="Welcome">
+            <Head title={title}>
                 <link rel="preconnect" href="https://fonts.bunny.net" />
                 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
             </Head>
 
             <div className="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8 dark:bg-[#0a0a0a]">
-                {/* Barre de navigation améliorée */}
+                {/* Barre de navigation */}
                 <header className="mb-6 w-full max-w-[335px] lg:max-w-6xl">
                     <nav className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm dark:bg-[#1a1a1a]">
                         {/* Logo */}
@@ -83,10 +83,10 @@ export default function Welcome() {
                                 À propos
                             </Link>
                             <Link
-                                href="/about"
-                                className="text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400"
+                                href="/eleves"
+                                className={`text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400 ${route().current('eleves.*') ? 'text-blue-600 font-medium' : ''}`}
                             >
-                                À propos
+                                Élèves
                             </Link>
                             <Link
                                 href="/contact"
@@ -164,9 +164,11 @@ export default function Welcome() {
                     </nav>
                 </header>
 
-                <div className="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0">
-                    xuxu
-                </div>
+                {/* Contenu de la page */}
+                <main className="w-full max-w-[335px] lg:max-w-6xl">
+                    {children}
+                </main>
+
                 <div className="hidden h-14.5 lg:block"></div>
             </div>
         </>

@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, usePage } from "@inertiajs/react";
+import Layout from "../../components/Layout";
 
 export default function Show() {
     const { eleve } = usePage().props;
@@ -27,7 +28,7 @@ export default function Show() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+        <Layout title={`Détails de ${eleve.prenom} ${eleve.nom}`}>
             <div className="max-w-4xl mx-auto">
                 {/* En-tête */}
                 <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
@@ -198,6 +199,6 @@ export default function Show() {
                     </div>
                 </div>
             </div>
-        </div>
+        </Layout>
     );
 }

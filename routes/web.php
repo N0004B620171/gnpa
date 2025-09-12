@@ -7,8 +7,9 @@ use Inertia\Inertia;
 Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
-Route::resource('eleves', EleveController::class);
-
+Route::resource('eleves', EleveController::class)->parameters([
+    'eleves' => 'eleve'
+]);
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');

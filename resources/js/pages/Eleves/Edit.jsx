@@ -174,7 +174,7 @@ export default function Edit({ eleve }) {
             
             <div className="flex gap-3">
               <Link 
-                href={route("eleves.show", eleve.id)}
+                // href={route("eleves.show", eleve.id)}
                 className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
