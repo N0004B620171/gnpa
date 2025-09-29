@@ -89,6 +89,18 @@ export default function Layout({ children, title = 'Xuxu' }) {
                                 Élèves
                             </Link>
                             <Link
+                                href="/professeurs"
+                                className={`text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400 ${route().current('eleves.*') ? 'text-blue-600 font-medium' : ''}`}
+                            >
+                                Professeurs
+                            </Link>
+                            <Link
+                                href="/parent-eleves"
+                                className={`text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400 ${route().current('eleves.*') ? 'text-blue-600 font-medium' : ''}`}
+                            >
+                                Parents d'élèves
+                            </Link>
+                            <Link
                                 href="/contact"
                                 className="text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400"
                             >

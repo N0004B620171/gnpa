@@ -45,4 +45,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Relation polymorphe vers ParentEleve ou Professeur
+     */
+    public function userable()
+    {
+        return $this->morphTo();
+    }
 }

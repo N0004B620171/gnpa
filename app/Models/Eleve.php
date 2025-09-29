@@ -19,4 +19,9 @@ class Eleve extends Model
             }
         });
     }
+
+    public function parentEleve()
+    {
+        return $this->belongsTo(ParentEleve::class, 'parent_id');
+    }
 }
