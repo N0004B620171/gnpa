@@ -1,105 +1,66 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Eleve;
+use App\Models\ParentEleve;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class EleveController extends Controller
 {
-    /**
-     * Liste des élèves
-     */
     public function index()
     {
-        $eleves = Eleve::latest()->get();
+        return Eleve::with('parentEleve', 'inscriptions')->paginate(20);
+    }
 
-        return Inertia::render('Eleves/Index', [
-            'eleves' => $eleves
+    public function storeWithParent(Request $request)
+    {
+        $validated = $request->validate([
+            'parent_id' => 'nullable|exists:parent_eleves,id',
+            'parent.prenom' => 'required_without:parent_id|string|max:255',
+            'parent.nom' => 'required_without:parent_id|string|max:255',
+            'parent.telephone' => 'nullable|string|max:20',
+            'parent.email' => 'nullable|email|unique:parent_eleves,email',
+            'eleve.prenom' => 'required|string|max:255',
+            'eleve.nom' => 'required|string|max:255',
+            'eleve.date_naissance' => 'nullable|date',
+            'eleve.sexe' => 'nullable|in:M,F',
         ]);
+
+        return DB::transaction(function () use ($validated) {
+            $parent = !empty($validated['parent_id'])
+                ? ParentEleve::findOrFail($validated['parent_id'])
+                : ParentEleve::create($validated['parent']);
+
+            $eleve = Eleve::create(array_merge($validated['eleve'], [
+                'parent_eleve_id' => $parent->id
+            ]));
+
+            return $eleve->load('parentEleve');
+        });
     }
 
     public function show(Eleve $eleve)
     {
-        return Inertia::render('Eleves/Show', [
-            'eleve' => $eleve
-        ]);
+        return $eleve->load('parentEleve', 'inscriptions.classe');
     }
 
-    /**
-     * Formulaire de création
-     */
-    public function create()
-    {
-        return Inertia::render('Eleves/Create');
-    }
-
-    /**
-     * Sauvegarde d’un nouvel élève
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'prenom' => 'required|string|max:255',
-            'nom' => 'required|string|max:255',
-            'date_naissance' => 'nullable|date',
-            'sexe' => 'nullable|in:M,F',
-            'photo' => 'nullable|image|max:2048',
-        ]);
-
-        $data = $request->only(['prenom', 'nom', 'date_naissance', 'sexe']);
-
-        if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('eleves', 'public');
-        }
-
-        Eleve::create($data);
-
-        return redirect()->route('eleves.index')->with('success', 'Élève créé avec succès.');
-    }
-
-    /**
-     * Formulaire d’édition
-     */
-    public function edit(Eleve $eleve)
-    {
-        return Inertia::render('Eleves/Edit', [
-            'eleve' => $eleve
-        ]);
-    }
-
-    /**
-     * Mise à jour d’un élève
-     */
     public function update(Request $request, Eleve $eleve)
     {
-        $request->validate([
+        $validated = $request->validate([
             'prenom' => 'required|string|max:255',
             'nom' => 'required|string|max:255',
             'date_naissance' => 'nullable|date',
             'sexe' => 'nullable|in:M,F',
-            'photo' => 'nullable|image|max:2048',
         ]);
 
-        $data = $request->only(['prenom', 'nom', 'date_naissance', 'sexe']);
-
-        if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('eleves', 'public');
-        }
-
-        $eleve->update($data);
-
-        return redirect()->route('eleves.index')->with('success', 'Élève mis à jour avec succès.');
+        $eleve->update($validated);
+        return $eleve;
     }
 
-    /**
-     * Suppression
-     */
     public function destroy(Eleve $eleve)
     {
         $eleve->delete();
-
-        return redirect()->route('eleves.index')->with('success', 'Élève supprimé avec succès.');
+        return response()->json(['message' => 'Élève supprimé']);
     }
 }

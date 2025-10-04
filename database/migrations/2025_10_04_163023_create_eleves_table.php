@@ -6,27 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
         Schema::create('eleves', function (Blueprint $table) {
             $table->id();
-            $table->uuid('uid')->unique(); // identifiant unique
-            $table->string('prenom');
-            $table->string('nom');
+            $table->uuid('uid')->unique();
+            $table->string('prenom', 100);
+            $table->string('nom', 100);
             $table->date('date_naissance')->nullable();
             $table->enum('sexe', ['M', 'F'])->nullable();
-            $table->string('photo')->nullable(); // chemin ou URL de la photo
+            $table->string('photo')->nullable();
+            $table->foreignId('parent_eleve_id')->nullable()->constrained('parent_eleves')->nullOnDelete();
             $table->timestamps();
+            
+            $table->index(['nom', 'prenom']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('eleves');
     }

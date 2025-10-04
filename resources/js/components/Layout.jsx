@@ -1,188 +1,252 @@
-// components/Layout.jsx
-import { Head, Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Link, usePage } from '@inertiajs/react';
 
-export default function Layout({ children, title = 'Xuxu' }) {
-    const { auth } = usePage().props;
-    const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [isServicesOpen, setIsServicesOpen] = useState(false);
+const Layout = ({ children, title }) => {
+    const { url } = usePage();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const navigation = [
+        { name: 'Tableau de bord', href: '/', icon: '📊', current: url === '/' },
+        { name: 'Élèves', href: route('eleves.index'), icon: '👨‍🎓', current: url.startsWith('/eleves') },
+        { name: 'Parents', href: route('parent-eleves.index'), icon: '👨‍👩‍👧‍👦', current: url.startsWith('/parent-eleves') },
+        { name: 'Professeurs', href: route('professeurs.index'), icon: '👨‍🏫', current: url.startsWith('/professeurs') },
+        { name: 'Classes', href: route('classes.index'), icon: '🏫', current: url.startsWith('/classes') },
+        { name: 'Inscriptions', href: route('inscriptions.index'), icon: '📝', current: url.startsWith('/inscriptions') },
+        { name: 'Niveaux', href: route('niveaux.index'), icon: '📚', current: url.startsWith('/niveaux') },
+        { name: 'Cycles', href: route('cycles.index'), icon: '🔄', current: url.startsWith('/cycles') },
+        { name: 'Années Scolaires', href: route('annees.index'), icon: '📅', current: url.startsWith('/annees') },
+        { name: 'Trimestres', href: route('trimestres.index'), icon: '📋', current: url.startsWith('/trimestres') },
+    ];
 
     return (
         <>
-            <Head title={title}>
-                <link rel="preconnect" href="https://fonts.bunny.net" />
-                <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
-            </Head>
+            {/* Styles CSS pour résoudre les problèmes de visibilité */}
+            <style jsx global>{`
+                /* Assurer la visibilité du texte sur tous les fonds */
+                .text-white {
+                    color: #ffffff !important;
+                }
+                
+                .text-gray-900 {
+                    color: #111827 !important;
+                }
+                
+                .text-gray-700 {
+                    color: #374151 !important;
+                }
+                
+                .text-gray-600 {
+                    color: #4b5563 !important;
+                }
+                
+                .text-gray-500 {
+                    color: #6b7280 !important;
+                }
+                
+                /* Boutons avec contraste suffisant */
+                .bg-blue-600 {
+                    background-color: #2563eb !important;
+                }
+                
+                .bg-green-600 {
+                    background-color: #059669 !important;
+                }
+                
+                .bg-red-600 {
+                    background-color: #dc2626 !important;
+                }
+                
+                .bg-indigo-600 {
+                    background-color: #4f46e5 !important;
+                }
+                
+                .bg-purple-600 {
+                    background-color: #7c3aed !important;
+                }
+                
+                .bg-teal-600 {
+                    background-color: #0d9488 !important;
+                }
+                
+                .bg-amber-600 {
+                    background-color: #d97706 !important;
+                }
+                
+                /* États de survol */
+                .hover\:bg-blue-700:hover {
+                    background-color: #1d4ed8 !important;
+                }
+                
+                .hover\:bg-green-700:hover {
+                    background-color: #047857 !important;
+                }
+                
+                .hover\:bg-red-700:hover {
+                    background-color: #b91c1c !important;
+                }
+                
+                .hover\:bg-indigo-700:hover {
+                    background-color: #4338ca !important;
+                }
+                
+                .hover\:bg-purple-700:hover {
+                    background-color: #6d28d9 !important;
+                }
+                
+                .hover\:bg-teal-700:hover {
+                    background-color: #0f766e !important;
+                }
+                
+                .hover\:bg-amber-700:hover {
+                    background-color: #b45309 !important;
+                }
 
-            <div className="flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8 dark:bg-[#0a0a0a]">
-                {/* Barre de navigation */}
-                <header className="mb-6 w-full max-w-[335px] lg:max-w-6xl">
-                    <nav className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm dark:bg-[#1a1a1a]">
-                        {/* Logo */}
-                        <Link href="/" className="flex items-center space-x-2">
-                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                                <span className="text-white font-bold text-lg">X</span>
-                            </div>
-                            <span className="font-semibold text-lg">Xuxu</span>
-                        </Link>
+                /* Couleurs pour les inscriptions */
+                .bg-cyan-600 {
+                    background-color: #0891b2 !important;
+                }
+                
+                .hover\:bg-cyan-700:hover {
+                    background-color: #0e7490 !important;
+                }
+            `}</style>
 
-                        {/* Menu principal */}
-                        <div className="hidden md:flex items-center space-x-6">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+                {/* Navigation principale */}
+                <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 shadow-sm sticky top-0 z-50">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex justify-between items-center py-3">
+                            {/* Logo */}
                             <Link
                                 href="/"
-                                className="text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400"
+                                className="flex items-center space-x-3 group"
                             >
-                                Accueil
+                                <div className="h-10 w-10 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-105">
+                                    <span className="text-white font-bold text-lg">🎓</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+                                        EduManager
+                                    </span>
+                                    <span className="text-xs text-gray-500 -mt-1">Système Académique</span>
+                                </div>
                             </Link>
 
-                            {/* Dropdown Services */}
-                            <div className="relative">
-                                <button
-                                    onClick={() => setIsServicesOpen(!isServicesOpen)}
-                                    className="flex items-center text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400"
-                                >
-                                    Services
-                                    <svg
-                                        className={`ml-1 h-4 w-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`}
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
+                            {/* Navigation desktop */}
+                            <div className="hidden lg:flex items-center space-x-1">
+                                {navigation.map((item) => (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href}
+                                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 ${item.current
+                                                ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-inner'
+                                                : 'text-gray-600 hover:text-gray-900 hover:bg-white/60 hover:shadow-md'
+                                            }`}
                                     >
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </button>
-
-                                {isServicesOpen && (
-                                    <div className="absolute z-10 mt-2 w-48 bg-white rounded-md shadow-lg py-1 dark:bg-[#2a2a2a]">
-                                        <Link
-                                            href="/service/web"
-                                            className="block px-4 py-2 text-sm text-[#1b1b18] hover:bg-gray-100 dark:text-[#EDEDEC] dark:hover:bg-[#3a3a3a]"
-                                        >
-                                            Développement Web
-                                        </Link>
-                                        <Link
-                                            href="/service/mobile"
-                                            className="block px-4 py-2 text-sm text-[#1b1b18] hover:bg-gray-100 dark:text-[#EDEDEC] dark:hover:bg-[#3a3a3a]"
-                                        >
-                                            Applications Mobile
-                                        </Link>
-                                        <Link
-                                            href="/service/consulting"
-                                            className="block px-4 py-2 text-sm text-[#1b1b18] hover:bg-gray-100 dark:text-[#EDEDEC] dark:hover:bg-[#3a3a3a]"
-                                        >
-                                            Conseil IT
-                                        </Link>
-                                    </div>
-                                )}
+                                        <span className="text-lg">{item.icon}</span>
+                                        <span className="text-gray-900">{item.name}</span>
+                                    </Link>
+                                ))}
                             </div>
 
-                            <Link
-                                href="/about"
-                                className="text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400"
+                            {/* Mobile menu button */}
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                             >
-                                À propos
-                            </Link>
-                            <Link
-                                href="/eleves"
-                                className={`text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400 ${route().current('eleves.*') ? 'text-blue-600 font-medium' : ''}`}
-                            >
-                                Élèves
-                            </Link>
-                            <Link
-                                href="/professeurs"
-                                className={`text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400 ${route().current('eleves.*') ? 'text-blue-600 font-medium' : ''}`}
-                            >
-                                Professeurs
-                            </Link>
-                            <Link
-                                href="/parent-eleves"
-                                className={`text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400 ${route().current('eleves.*') ? 'text-blue-600 font-medium' : ''}`}
-                            >
-                                Parents d'élèves
-                            </Link>
-                            <Link
-                                href="/contact"
-                                className="text-[#1b1b18] hover:text-blue-600 transition-colors dark:text-[#EDEDEC] dark:hover:text-blue-400"
-                            >
-                                Contact
-                            </Link>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            </button>
                         </div>
+                    </div>
 
-                        {/* Actions utilisateur */}
-                        <div className="flex items-center space-x-4">
-                            {auth.user ? (
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                        className="flex items-center space-x-2 focus:outline-none"
+                    {/* Mobile menu */}
+                    {isMobileMenuOpen && (
+                        <div className="lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-200/60">
+                            <div className="px-4 py-3 space-y-1">
+                                {navigation.map((item) => (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${item.current
+                                                ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200'
+                                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                            }`}
                                     >
-                                        <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                                            {auth.user.name.charAt(0).toUpperCase()}
-                                        </div>
-                                        <span className="hidden md:inline text-sm text-[#1b1b18] dark:text-[#EDEDEC]">
-                                            {auth.user.name}
-                                        </span>
-                                        <svg
-                                            className={`h-4 w-4 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`}
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
+                                        <span className="text-xl">{item.icon}</span>
+                                        <span className="text-gray-900">{item.name}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </nav>
 
-                                    {isProfileOpen && (
-                                        <div className="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg py-1 dark:bg-[#2a2a2a]">
-                                            <Link
-                                                href={route('dashboard')}
-                                                className="block px-4 py-2 text-sm text-[#1b1b18] hover:bg-gray-100 dark:text-[#EDEDEC] dark:hover:bg-[#3a3a3a]"
-                                            >
-                                                Tableau de bord
-                                            </Link>
-                                            <Link
-                                                href={route('profile.edit')}
-                                                className="block px-4 py-2 text-sm text-[#1b1b18] hover:bg-gray-100 dark:text-[#EDEDEC] dark:hover:bg-[#3a3a3a]"
-                                            >
-                                                Mon profil
-                                            </Link>
-                                            <Link
-                                                href={route('logout')}
-                                                method="post"
-                                                className="block px-4 py-2 text-sm text-[#1b1b18] hover:bg-gray-100 dark:text-[#EDEDEC] dark:hover:bg-[#3a3a3a]"
-                                            >
-                                                Déconnexion
-                                            </Link>
-                                        </div>
-                                    )}
+                {/* En-tête de page avec titre */}
+                {title && (
+                    <div className="bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-purple-600/10 border-b border-blue-200/30">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                    <div className="h-12 w-12 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg">
+                                        <span className="text-white text-xl">📝</span>
+                                    </div>
+                                    <div>
+                                        <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+                                        <p className="text-gray-600 mt-1">
+                                            {title === 'Inscriptions' && 'Gérez les inscriptions des élèves aux classes'}
+                                            {title === 'Gestion des Inscriptions' && 'Gérez les inscriptions des élèves aux classes'}
+                                            {title === 'Créer une Inscription' && 'Inscrire un élève dans une classe'}
+                                            {title === 'Modifier l\'Inscription' && 'Modifiez les informations de l\'inscription'}
+                                        </p>
+                                    </div>
                                 </div>
-                            ) : (
-                                <>
+                                
+                                {/* Actions rapides selon la page */}
+                                {title === 'Inscriptions' || title === 'Gestion des Inscriptions' ? (
                                     <Link
-                                        href={route('login')}
-                                        className="inline-block rounded-sm border border-transparent px-4 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#19140035] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
+                                        href={route('inscriptions.create')}
+                                        className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                                     >
-                                        Connexion
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        </svg>
+                                        <span className="font-semibold">Nouvelle Inscription</span>
                                     </Link>
-                                    <Link
-                                        href={route('register')}
-                                        className="inline-block rounded-sm bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-1.5 text-sm leading-normal text-white shadow-sm hover:from-blue-600 hover:to-purple-700 transition-all"
-                                    >
-                                        Inscription
-                                    </Link>
-                                </>
-                            )}
+                                ) : null}
+                            </div>
                         </div>
-                    </nav>
-                </header>
+                    </div>
+                )}
 
-                {/* Contenu de la page */}
-                <main className="w-full max-w-[335px] lg:max-w-6xl">
-                    {children}
+                {/* Contenu principal */}
+                <main className="flex-1">
+                    <div className={`${title ? 'py-8' : 'py-8'} max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`}>
+                        {children}
+                    </div>
                 </main>
 
-                <div className="hidden h-14.5 lg:block"></div>
+                {/* Pied de page */}
+                <footer className="bg-white/60 backdrop-blur-md border-t border-gray-200/60 mt-auto">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                        <div className="flex flex-col md:flex-row justify-between items-center">
+                            <div className="flex items-center space-x-3 mb-4 md:mb-0">
+                                <div className="h-8 w-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center">
+                                    <span className="text-white text-sm font-bold">🎓</span>
+                                </div>
+                                <span className="text-gray-700 font-medium">EduManager</span>
+                            </div>
+                            <div className="text-gray-500 text-sm">
+                                © {new Date().getFullYear()} Système de Gestion Académique. Tous droits réservés.
+                            </div>
+                        </div>
+                    </div>
+                </footer>
             </div>
         </>
     );
-}
+};
+
+export default Layout;

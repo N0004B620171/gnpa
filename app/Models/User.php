@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'userable_id',
+        'userable_type'
     ];
 
     /**
@@ -52,5 +54,22 @@ class User extends Authenticatable
     public function userable()
     {
         return $this->morphTo();
+    }
+
+    // Vérifier le type d'utilisateur
+    public function isProfesseur()
+    {
+        return $this->userable_type === 'App\Models\Professeur';
+    }
+
+    public function isParent()
+    {
+        return $this->userable_type === 'App\Models\ParentEleve';
+    }
+
+    // Accès rapide au profil
+    public function profil()
+    {
+        return $this->userable;
     }
 }
