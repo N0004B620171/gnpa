@@ -14,6 +14,10 @@ return [
     */
 
     'name' => env('APP_NAME', 'Laravel'),
+      'school_name' => env('SCHOOL_NAME', 'École Secondaire Moderne'),
+    'school_address' => env('SCHOOL_ADDRESS', '123 Avenue de l\'Éducation, 75000 Paris'),
+    'school_phone' => env('SCHOOL_PHONE', '+33 1 23 45 67 89'),
+    'school_director' => env('SCHOOL_DIRECTOR', 'Le Directeur'),
 
     /*
     |--------------------------------------------------------------------------

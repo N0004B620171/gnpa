@@ -1,319 +1,366 @@
 import React, { useState } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
-import Layout from '@/Components/Layout';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
 
-const InscriptionsIndex = ({ inscriptions }) => {
+const Index = ({ inscriptions, filters }) => {
     const { flash } = usePage().props;
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterClasse, setFilterClasse] = useState('');
-    const [filterStatut, setFilterStatut] = useState('');
+    const [search, setSearch] = useState(filters.search || '');
+    const [perPage, setPerPage] = useState(filters.perPage || 10);
 
-    // Gérer la pagination - inscriptions.data contient le tableau
-    const inscriptionsList = inscriptions?.data || [];
-
-    // Statistiques
-    const stats = {
-        total: inscriptions?.total || 0,
-        actives: inscriptionsList.filter(i => i.statut === 'actif').length,
-        inactives: inscriptionsList.filter(i => i.statut === 'inactif').length,
+    const debounce = (func, wait) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
     };
 
-    // Filtrer les inscriptions
-    const filteredInscriptions = inscriptionsList.filter(inscription => {
-        const matchesSearch = 
-            inscription.eleve?.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            inscription.eleve?.prenom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            inscription.classe?.nom?.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        const matchesClasse = !filterClasse || inscription.classe_id == filterClasse;
-        const matchesStatut = !filterStatut || inscription.statut === filterStatut;
+    const handleSearch = debounce((value) => {
+        router.get('/inscriptions', { 
+            search: value, 
+            perPage 
+        }, {
+            preserveState: true,
+            replace: true
+        });
+    }, 300);
 
-        return matchesSearch && matchesClasse && matchesStatut;
-    });
+    const handlePerPageChange = (value) => {
+        setPerPage(value);
+        router.get('/inscriptions', { 
+            search, 
+            perPage: value 
+        }, {
+            preserveState: true,
+            replace: true
+        });
+    };
 
-    // Classes uniques pour le filtre
-    const classes = [...new Set(inscriptionsList
-        .map(i => i.classe)
-        .filter(Boolean)
-    )];
+    const getStatusColor = (statut) => {
+        return statut === 'actif' 
+            ? 'text-green-600 bg-green-50 border-green-200' 
+            : 'text-red-600 bg-red-50 border-red-200';
+    };
+
+    const handleDelete = (inscription) => {
+        if (confirm(`Êtes-vous sûr de vouloir supprimer l'inscription de ${inscription.eleve.prenom} ${inscription.eleve.nom} ?`)) {
+            router.delete(`/inscriptions/${inscription.id}`);
+        }
+    };
 
     return (
-        <Layout title="Gestion des Inscriptions">
-            <Head title="Inscriptions" />
-            
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* En-tête avec statistiques */}
-                <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
-                        <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <AppLayout>
+            <Head title="Gestion des Inscriptions" />
+
+            {/* Alertes */}
+            {flash?.success && (
+                <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-green-800">
+                                {flash.success}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {flash?.error && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-red-800">
+                                {flash.error}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="max-w-7xl mx-auto">
+                {/* En-tête avec gradient */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white mb-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                 </svg>
-                                Inscriptions des Élèves
+                                Gestion des Inscriptions
                             </h1>
-                            <p className="text-gray-600 mt-2 text-lg">
+                            <p className="text-blue-100 mt-2 text-lg">
                                 Gérez les inscriptions des élèves aux classes
                             </p>
                         </div>
-
                         <Link
-                            href={route('inscriptions.create')}
-                            className="flex items-center justify-center gap-3 px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                            href="/inscriptions/create"
+                            className="mt-4 lg:mt-0 inline-flex items-center gap-3 px-6 py-3.5 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white hover:bg-white/30 transition-all duration-200 transform hover:scale-105"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            <span className="font-semibold">Nouvelle Inscription</span>
+                            Nouvelle Inscription
                         </Link>
                     </div>
+                </div>
 
-                    {/* Cartes de statistiques */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-blue-800">Total Inscriptions</p>
-                                    <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
-                                </div>
-                                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-green-800">Inscriptions Actives</p>
-                                    <p className="text-2xl font-bold text-green-900">{stats.actives}</p>
-                                </div>
-                                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl p-4 border border-orange-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-orange-800">Inscriptions Inactives</p>
-                                    <p className="text-2xl font-bold text-orange-900">{stats.inactives}</p>
-                                </div>
-                                <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Filtres et recherche */}
+                {/* Filtres et Recherche */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                        <div className="lg:col-span-2">
+                        <div className="lg:col-span-3">
                             <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
                                 <input
                                     type="text"
-                                    placeholder="Rechercher un élève, une classe..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white"
+                                    placeholder="Rechercher un élève, une classe ou une année scolaire..."
+                                    defaultValue={search}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        handleSearch(e.target.value);
+                                    }}
+                                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                                 />
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
                             </div>
                         </div>
-
-                        <div className="relative">
+                        
+                        <div>
                             <select
-                                value={filterClasse}
-                                onChange={(e) => setFilterClasse(e.target.value)}
-                                className="w-full px-4 py-3 pr-10 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white appearance-none"
+                                value={perPage}
+                                onChange={(e) => handlePerPageChange(e.target.value)}
+                                className="block w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                             >
-                                <option value="">Toutes les classes</option>
-                                {classes.map(classe => (
-                                    <option key={classe.id} value={classe.id}>
-                                        {classe.nom}
-                                    </option>
-                                ))}
+                                <option value="10">10/page</option>
+                                <option value="20">20/page</option>
+                                <option value="50">50/page</option>
                             </select>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute right-3 top-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                            </svg>
-                        </div>
-
-                        <div className="relative">
-                            <select
-                                value={filterStatut}
-                                onChange={(e) => setFilterStatut(e.target.value)}
-                                className="w-full px-4 py-3 pr-10 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white appearance-none"
-                            >
-                                <option value="">Tous les statuts</option>
-                                <option value="actif">Actif</option>
-                                <option value="inactif">Inactif</option>
-                            </select>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute right-3 top-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                            </svg>
                         </div>
                     </div>
                 </div>
 
-                {/* Message de succès */}
-                {flash?.success && (
-                    <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-700 p-4 rounded-xl shadow-sm">
-                        <div className="flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="font-medium">{flash.success}</span>
-                        </div>
+                {/* Liste des Inscriptions */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                    {/* En-tête du tableau (Desktop) */}
+                    <div className="hidden lg:grid grid-cols-12 bg-gradient-to-r from-gray-50 to-blue-50 px-6 py-4 text-sm font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                        <div className="col-span-3">Élève</div>
+                        <div className="col-span-2">Classe</div>
+                        <div className="col-span-2">Année Scolaire</div>
+                        <div className="col-span-2">Date d'inscription</div>
+                        <div className="col-span-2">Statut</div>
+                        <div className="col-span-1 text-right">Actions</div>
                     </div>
-                )}
 
-                {/* Tableau des inscriptions */}
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                    {filteredInscriptions.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Élève</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Classe</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Année Scolaire</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Date Inscription</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Statut</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {filteredInscriptions.map((inscription) => (
-                                        <tr key={inscription.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center">
-                                                    <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                        </svg>
-                                                    </div>
-                                                    <div className="ml-4">
-                                                        <div className="text-sm font-medium text-gray-900">
-                                                            {inscription.eleve?.prenom} {inscription.eleve?.nom}
-                                                        </div>
-                                                        <div className="text-sm text-gray-500">
-                                                            {inscription.eleve?.email}
-                                                        </div>
-                                                    </div>
+                    <div className="divide-y divide-gray-200">
+                        {inscriptions.data.map((inscription) => (
+                            <div key={inscription.id} className="hover:bg-gray-50/50 transition-all duration-200">
+                                <div className="px-6 py-6">
+                                    {/* Version Mobile */}
+                                    <div className="lg:hidden space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0 h-12 w-12 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
+                                                    <span className="text-blue-600 font-bold text-lg">
+                                                        {inscription.eleve?.prenom[0]}{inscription.eleve?.nom[0]}
+                                                    </span>
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                                    {inscription.classe?.nom}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                <div className="ml-4">
+                                                    <h3 className="text-lg font-semibold text-gray-900">
+                                                        {inscription.eleve?.prenom} {inscription.eleve?.nom}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600">{inscription.classe?.nom}</p>
+                                                </div>
+                                            </div>
+                                            <div className={`px-3 py-1 rounded-full text-sm font-medium border-2 ${getStatusColor(inscription.statut)}`}>
+                                                {inscription.statut === 'actif' ? 'Actif' : 'Inactif'}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center text-sm text-gray-600">
+                                                <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                {new Date(inscription.date_inscription).toLocaleDateString('fr-FR')}
+                                            </div>
+                                            <div className="text-sm text-gray-600">
                                                 {inscription.annee_scolaire?.nom}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                {inscription.date_inscription ? new Date(inscription.date_inscription).toLocaleDateString('fr-FR') : 'N/A'}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                                                    inscription.statut === 'actif' 
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-orange-100 text-orange-800'
-                                                }`}>
-                                                    {inscription.statut === 'actif' ? 'Actif' : 'Inactif'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center space-x-2">
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-sm text-gray-600">
+                                                    Niveau: {inscription.classe?.niveau?.nom}
+                                                </div>
+                                                <div className="flex space-x-2">
                                                     <Link
-                                                        href={route('inscriptions.edit', inscription.id)}
-                                                        className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 transition-all duration-200"
+                                                        href={`/inscriptions/${inscription.id}`}
+                                                        className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                                                        title="Voir les détails"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        </svg>
+                                                    </Link>
+                                                    <Link
+                                                        href={`/inscriptions/${inscription.id}/edit`}
+                                                        className="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-green-50 transition-colors"
                                                         title="Modifier"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                         </svg>
                                                     </Link>
-
-                                                    <Link
-                                                        as="button"
-                                                        method="delete"
-                                                        href={route('inscriptions.destroy', inscription.id)}
-                                                        onClick={() => confirm('Êtes-vous sûr de vouloir supprimer cette inscription ?')}
-                                                        className="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+                                                    <button
+                                                        onClick={() => handleDelete(inscription)}
+                                                        className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
                                                         title="Supprimer"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                         </svg>
-                                                    </Link>
+                                                    </button>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune inscription trouvée</h3>
-                            <p className="text-gray-500 mb-6">
-                                {searchTerm || filterClasse || filterStatut ? 
-                                    "Aucune inscription ne correspond à vos critères de recherche." :
-                                    "Commencez par créer votre première inscription."
-                                }
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Version Desktop */}
+                                    <div className="hidden lg:grid grid-cols-12 gap-6 items-center">
+                                        <div className="col-span-3">
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0 h-12 w-12 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center">
+                                                    <span className="text-blue-600 font-bold text-lg">
+                                                        {inscription.eleve?.prenom[0]}{inscription.eleve?.nom[0]}
+                                                    </span>
+                                                </div>
+                                                <div className="ml-4">
+                                                    <div className="text-lg font-semibold text-gray-900">
+                                                        {inscription.eleve?.prenom} {inscription.eleve?.nom}
+                                                    </div>
+                                                    <div className="text-sm text-gray-600">
+                                                        Niveau: {inscription.classe?.niveau?.nom}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-lg font-medium text-gray-900">
+                                                {inscription.classe?.nom}
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-lg font-medium text-gray-900">
+                                                {inscription.annee_scolaire?.nom}
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className="text-sm text-gray-900">
+                                                {new Date(inscription.date_inscription).toLocaleDateString('fr-FR')}
+                                            </div>
+                                            <div className="text-sm text-gray-600">
+                                                {new Date(inscription.date_inscription).toLocaleTimeString('fr-FR')}
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold border-2 ${getStatusColor(inscription.statut)}`}>
+                                                {inscription.statut === 'actif' ? 'Actif' : 'Inactif'}
+                                            </div>
+                                        </div>
+                                        <div className="col-span-1">
+                                            <div className="flex justify-end space-x-2">
+                                                <Link
+                                                    href={`/inscriptions/${inscription.id}`}
+                                                    className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-xl transition-all duration-200"
+                                                    title="Voir les détails"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </Link>
+                                                <Link
+                                                    href={`/inscriptions/${inscription.id}/edit`}
+                                                    className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-xl transition-all duration-200"
+                                                    title="Modifier"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleDelete(inscription)}
+                                                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-xl transition-all duration-200"
+                                                    title="Supprimer"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Message vide */}
+                    {inscriptions.data.length === 0 && (
+                        <div className="text-center py-16">
+                            <div className="mx-auto h-24 w-24 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
+                                <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune inscription trouvée</h3>
+                            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                                {search 
+                                    ? 'Aucune inscription ne correspond à vos critères de recherche.' 
+                                    : 'Commencez par inscrire vos premiers élèves.'}
                             </p>
-                            {(searchTerm || filterClasse || filterStatut) ? (
-                                <button
-                                    onClick={() => {
-                                        setSearchTerm('');
-                                        setFilterClasse('');
-                                        setFilterStatut('');
-                                    }}
-                                    className="text-blue-600 hover:text-blue-700 font-medium"
-                                >
-                                    Réinitialiser les filtres
-                                </button>
-                            ) : (
-                                <Link
-                                    href={route('inscriptions.create')}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    Créer une inscription
-                                </Link>
-                            )}
+                            <Link
+                                href="/inscriptions/create"
+                                className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Nouvelle Inscription
+                            </Link>
                         </div>
                     )}
                 </div>
 
                 {/* Pagination */}
-                {inscriptions?.links && (
-                    <div className="mt-6 flex justify-center">
-                        <div className="flex space-x-2">
+                {inscriptions.data.length > 0 && (
+                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+                        <div className="text-sm text-gray-700">
+                            Affichage de <span className="font-semibold">{inscriptions.from}</span> à <span className="font-semibold">{inscriptions.to}</span> sur <span className="font-semibold">{inscriptions.total}</span> résultats
+                        </div>
+                        <div className="flex space-x-1">
                             {inscriptions.links.map((link, index) => (
-                                <Link
+                                <button
                                     key={index}
-                                    href={link.url || '#'}
-                                    className={`px-4 py-2 rounded-lg border ${
+                                    onClick={() => router.get(link.url || '#')}
+                                    disabled={!link.url}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                                         link.active
-                                            ? 'bg-blue-600 text-white border-blue-600'
-                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                    } ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg'
+                                            : link.url
+                                            ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-500 hover:text-blue-600'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ))}
@@ -321,8 +368,8 @@ const InscriptionsIndex = ({ inscriptions }) => {
                     </div>
                 )}
             </div>
-        </Layout>
+        </AppLayout>
     );
 };
 
-export default InscriptionsIndex;
+export default Index;

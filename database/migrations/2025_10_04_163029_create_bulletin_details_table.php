@@ -20,13 +20,13 @@ return new class extends Migration
             $table->string('professeur_nom')->nullable();
 
             // Notes
-            $table->float('note');
-            $table->float('sur');
-            $table->float('note_normalisee');
+            $table->decimal('note', 5, 2)->nullable();
+            $table->decimal('sur', 5, 2)->nullable();
+            $table->decimal('note_normalisee', 5, 2)->nullable();
             $table->string('appreciation')->nullable();
 
             $table->timestamps();
-            
+
             $table->index(['bulletin_id', 'matiere_id'], 'bulletin_details_bulletin_matiere_index');
         });
     }

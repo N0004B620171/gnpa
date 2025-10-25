@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Composition;
+use App\Models\Note;
+use App\Models\Paiement;
+use App\Models\ServiceCiblage;
+use App\Observers\CompositionObserver;
+use App\Observers\NoteObserver;
+use App\Observers\PaiementObserver;
+use App\Observers\ServiceCiblageObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 
@@ -20,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Composition::observe(CompositionObserver::class);
+        Note::observe(NoteObserver::class);
+        ServiceCiblage::observe(ServiceCiblageObserver::class);
+        Paiement::observe(PaiementObserver::class);
         Schema::defaultStringLength(191);
     }
 }

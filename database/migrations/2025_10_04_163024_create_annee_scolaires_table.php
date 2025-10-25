@@ -15,6 +15,7 @@ return new class extends Migration
             $table->date('date_debut');
             $table->date('date_fin');
             $table->boolean('actif')->default(false);
+            $table->text('description')->nullable();
             $table->timestamps();
             
             $table->index('actif');

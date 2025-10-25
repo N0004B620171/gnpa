@@ -1,76 +1,168 @@
 import React, { useState } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
-import Layout from '@/Components/Layout';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
 
-const NiveauxIndex = ({ niveaux }) => {
+const Index = ({ niveaux, cycles, filters }) => {
     const { flash } = usePage().props;
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterCycle, setFilterCycle] = useState('');
+    const [search, setSearch] = useState(filters.search || '');
+    const [cycleId, setCycleId] = useState(filters.cycle_id || '');
+    const [perPage, setPerPage] = useState(filters.perPage || 10);
 
-    // Filtrer les niveaux selon les critères de recherche
-    const filteredNiveaux = niveaux.filter(niveau => {
-        const matchesSearch = niveau.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            niveau.cycle?.nom.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCycle = filterCycle === '' || niveau.cycle_id == filterCycle;
-        return matchesSearch && matchesCycle;
-    });
+    const debounce = (func, wait) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    };
 
-    // Cycles uniques pour le filtre
-    const cycles = [...new Set(niveaux.map(n => n.cycle).filter(Boolean))];
+    const handleSearch = debounce((value) => {
+        router.get('/niveaux', { search: value, cycle_id: cycleId, perPage }, {
+            preserveState: true,
+            replace: true
+        });
+    }, 300);
+
+    const handleFilterChange = () => {
+        router.get('/niveaux', { search, cycle_id: cycleId, perPage }, {
+            preserveState: true,
+            replace: true
+        });
+    };
+
+    const handlePerPageChange = (value) => {
+        setPerPage(value);
+        router.get('/niveaux', { search, cycle_id: cycleId, perPage: value }, {
+            preserveState: true,
+            replace: true
+        });
+    };
+
+    const handleDelete = (niveau) => {
+        if (confirm(`Êtes-vous sûr de vouloir supprimer le niveau "${niveau.nom}" ?`)) {
+            router.delete(`/niveaux/${niveau.id}`);
+        }
+    };
+
+    const getNiveauColor = (index) => {
+        const colors = [
+            'from-blue-500 to-blue-600',
+            'from-green-500 to-green-600',
+            'from-purple-500 to-purple-600',
+            'from-orange-500 to-orange-600',
+            'from-pink-500 to-pink-600',
+            'from-indigo-500 to-indigo-600',
+            'from-teal-500 to-teal-600',
+            'from-cyan-500 to-cyan-600'
+        ];
+        return colors[index % colors.length];
+    };
+
+    const getMoyenneColor = (moyenne) => {
+        if (moyenne >= 12) return 'text-green-600 bg-green-50 border-green-200';
+        if (moyenne >= 10) return 'text-blue-600 bg-blue-50 border-blue-200';
+        if (moyenne >= 8) return 'text-orange-600 bg-orange-50 border-orange-200';
+        return 'text-red-600 bg-red-50 border-red-200';
+    };
 
     return (
-        <Layout title="Gestion des Niveaux">
-            <Head title="Liste des Niveaux" />
-            
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* En-tête */}
-                <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                        <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <AppLayout>
+            <Head title="Gestion des Niveaux" />
+
+            {/* Alertes */}
+            {flash?.success && (
+                <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-green-800">
+                                {flash.success}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {flash?.error && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-red-800">
+                                {flash.error}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="max-w-7xl mx-auto">
+                {/* En-tête avec gradient */}
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-700 rounded-2xl p-8 text-white mb-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
                                 Gestion des Niveaux
                             </h1>
-                            <p className="text-gray-600 mt-2 text-lg">
-                                Gérez les niveaux académiques de votre établissement
+                            <p className="text-purple-100 mt-2 text-lg">
+                                Organisez les niveaux pédagogiques par cycle
                             </p>
                         </div>
-
-                        <Link
-                            href={route('niveaux.create')}
-                            className="flex items-center justify-center gap-3 px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            <span className="font-semibold">Nouveau Niveau</span>
-                        </Link>
+                        <div className="mt-4 lg:mt-0">
+                            <Link
+                                href="/niveaux/create"
+                                className="inline-flex items-center gap-3 px-6 py-3.5 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white hover:bg-white/30 transition-all duration-200 transform hover:scale-105"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Nouveau Niveau
+                            </Link>
+                        </div>
                     </div>
+                </div>
 
-                    {/* Filtres et recherche */}
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-8">
-                        <div className="lg:col-span-2">
+                {/* Filtres et Recherche */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-6 space-y-4 lg:space-y-0">
+                        <div className="flex-1">
                             <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
                                 <input
                                     type="text"
                                     placeholder="Rechercher un niveau ou cycle..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-300 focus:ring-3 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50"
+                                    defaultValue={search}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        handleSearch(e.target.value);
+                                    }}
+                                    className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
                                 />
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
                             </div>
                         </div>
-
-                        <div className="relative">
+                        <div className="lg:w-64">
                             <select
-                                value={filterCycle}
-                                onChange={(e) => setFilterCycle(e.target.value)}
-                                className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-300 focus:ring-3 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 appearance-none"
+                                value={cycleId}
+                                onChange={(e) => {
+                                    setCycleId(e.target.value);
+                                    handleFilterChange();
+                                }}
+                                className="block w-full pl-4 pr-10 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
                             >
                                 <option value="">Tous les cycles</option>
                                 {cycles.map((cycle) => (
@@ -79,161 +171,201 @@ const NiveauxIndex = ({ niveaux }) => {
                                     </option>
                                 ))}
                             </select>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute right-3 top-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                            </svg>
                         </div>
-
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 flex items-center justify-center border border-blue-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="text-sm font-semibold text-blue-700">
-                                {filteredNiveaux.length} niveau{filteredNiveaux.length !== 1 ? 'x' : ''}
-                            </span>
+                        <div className="lg:w-48">
+                            <select
+                                value={perPage}
+                                onChange={(e) => handlePerPageChange(e.target.value)}
+                                className="block w-full pl-4 pr-10 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-200"
+                            >
+                                <option value="10">10 par page</option>
+                                <option value="20">20 par page</option>
+                                <option value="50">50 par page</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
-                {/* Message de succès */}
-                {flash?.success && (
-                    <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-700 p-4 rounded-xl shadow-sm">
-                        <div className="flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="font-medium">{flash.success}</span>
+                {/* Liste des Niveaux */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {niveaux.data.map((niveau, index) => (
+                        <div key={niveau.id} className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                            {/* En-tête avec gradient */}
+                            <div className={`bg-gradient-to-r ${getNiveauColor(index)} p-6 text-white`}>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-xl font-bold">{niveau.nom}</h3>
+                                        <p className="text-purple-100 mt-1 opacity-90">
+                                            {niveau.cycle?.nom}
+                                        </p>
+                                    </div>
+                                    <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Contenu */}
+                            <div className="p-6">
+                                {/* Statistiques rapides */}
+                                <div className="grid grid-cols-3 gap-3 mb-4">
+                                    <div className="text-center p-3 bg-gray-50 rounded-xl">
+                                        <div className="text-xl font-bold text-gray-900">{niveau.classes?.length || 0}</div>
+                                        <div className="text-xs text-gray-600">Classes</div>
+                                    </div>
+                                    <div className="text-center p-3 bg-gray-50 rounded-xl">
+                                        <div className="text-xl font-bold text-gray-900">{niveau.matieres?.length || 0}</div>
+                                        <div className="text-xs text-gray-600">Matières</div>
+                                    </div>
+                                    <div className="text-center p-3 bg-gray-50 rounded-xl">
+                                        <div className={`text-xl font-bold ${getMoyenneColor(niveau.moyenne_min_pour_passage).split(' ')[0]}`}>
+                                            {niveau.moyenne_min_pour_passage}
+                                        </div>
+                                        <div className="text-xs text-gray-600">Moy. min</div>
+                                    </div>
+                                </div>
+
+                                {/* Moyenne minimale */}
+                                <div className="mb-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-medium text-gray-700">Moyenne minimale pour passage</span>
+                                        <span className={`text-sm font-bold ${getMoyenneColor(niveau.moyenne_min_pour_passage)} px-2 py-1 rounded-full`}>
+                                            {niveau.moyenne_min_pour_passage}/20
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div 
+                                            className={`h-2 rounded-full ${
+                                                niveau.moyenne_min_pour_passage >= 12 ? 'bg-green-500' :
+                                                niveau.moyenne_min_pour_passage >= 10 ? 'bg-blue-500' :
+                                                niveau.moyenne_min_pour_passage >= 8 ? 'bg-orange-500' : 'bg-red-500'
+                                            }`}
+                                            style={{ width: `${(niveau.moyenne_min_pour_passage / 20) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                {/* Liste des classes */}
+                                {niveau.classes && niveau.classes.length > 0 ? (
+                                    <div className="space-y-2">
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Classes :</h4>
+                                        {niveau.classes.slice(0, 3).map((classe) => (
+                                            <div key={classe.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                                                <span className="text-sm font-medium text-gray-900">{classe.nom}</span>
+                                                {classe.professeur && (
+                                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                        {classe.professeur.prenom[0]}. {classe.professeur.nom}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {niveau.classes.length > 3 && (
+                                            <div className="text-center text-xs text-gray-500 py-1">
+                                                + {niveau.classes.length - 3} autre(s) classe(s)
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-3">
+                                        <svg className="mx-auto h-6 w-6 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        <p className="text-xs text-gray-500">Aucune classe</p>
+                                    </div>
+                                )}
+
+                                {/* Actions */}
+                                <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
+                                    <Link
+                                        href={`/niveaux/${niveau.id}`}
+                                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        Détails
+                                    </Link>
+                                    <div className="flex space-x-2">
+                                        <Link
+                                            href={`/niveaux/${niveau.id}/edit`}
+                                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            Modifier
+                                        </Link>
+                                        <button
+                                            onClick={() => handleDelete(niveau)}
+                                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            Supprimer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                    ))}
+                </div>
+
+                {/* Message vide */}
+                {niveaux.data.length === 0 && (
+                    <div className="text-center py-16 bg-white rounded-2xl shadow-xl border border-gray-200">
+                        <div className="mx-auto h-24 w-24 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
+                            <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun niveau trouvé</h3>
+                        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                            {search || cycleId ? 'Aucun niveau ne correspond à vos critères de recherche.' : 'Commencez par créer votre premier niveau.'}
+                        </p>
+                        <Link
+                            href="/niveaux/create"
+                            className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-700 text-white rounded-xl hover:from-purple-700 hover:to-indigo-800 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Créer le premier niveau
+                        </Link>
                     </div>
                 )}
 
-                {/* Tableau des niveaux */}
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                        Nom du niveau
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                        Cycle
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                        Date de création
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {filteredNiveaux.length > 0 ? (
-                                    filteredNiveaux.map((niveau) => (
-                                        <tr key={niveau.id} className="hover:bg-blue-50 transition-colors duration-150 group">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    <div className="h-10 w-10 flex-shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-                                                        <span className="text-white font-bold text-sm">
-                                                            {niveau.nom.charAt(0).toUpperCase()}
-                                                        </span>
-                                                    </div>
-                                                    <div className="ml-4">
-                                                        <div className="text-sm font-semibold text-gray-900 group-hover:text-blue-700">
-                                                            {niveau.nom}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                                    </svg>
-                                                    {niveau.cycle?.nom || 'Non assigné'}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {new Date(niveau.created_at).toLocaleDateString('fr-FR', {
-                                                    day: 'numeric',
-                                                    month: 'long',
-                                                    year: 'numeric'
-                                                })}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div className="flex items-center space-x-2">
-                                                    <Link
-                                                        href={route('niveaux.edit', niveau.id)}
-                                                        className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 transition-all duration-200 transform hover:scale-105"
-                                                        title="Modifier"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
-                                                    </Link>
-
-                                                    <Link
-                                                        as="button"
-                                                        method="delete"
-                                                        href={route('niveaux.destroy', niveau.id)}
-                                                        onClick={() => confirm('Êtes-vous sûr de vouloir supprimer ce niveau ?')}
-                                                        className="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-all duration-200 transform hover:scale-105"
-                                                        title="Supprimer"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </Link>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="4" className="px-6 py-12 text-center">
-                                            <div className="flex flex-col items-center justify-center">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                                </svg>
-                                                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun niveau trouvé</h3>
-                                                <p className="text-gray-500 mb-4">
-                                                    {searchTerm || filterCycle ? 
-                                                        "Aucun niveau ne correspond à vos critères de recherche." :
-                                                        "Commencez par créer votre premier niveau académique."
-                                                    }
-                                                </p>
-                                                {(searchTerm || filterCycle) ? (
-                                                    <button
-                                                        onClick={() => {
-                                                            setSearchTerm('');
-                                                            setFilterCycle('');
-                                                        }}
-                                                        className="text-blue-600 hover:text-blue-700 font-medium"
-                                                    >
-                                                        Réinitialiser les filtres
-                                                    </button>
-                                                ) : (
-                                                    <Link
-                                                        href={route('niveaux.create')}
-                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                        </svg>
-                                                        Créer un niveau
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                {/* Pagination */}
+                {niveaux.data.length > 0 && (
+                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+                        <div className="text-sm text-gray-700">
+                            Affichage de <span className="font-semibold">{niveaux.from}</span> à <span className="font-semibold">{niveaux.to}</span> sur <span className="font-semibold">{niveaux.total}</span> résultats
+                        </div>
+                        <div className="flex space-x-1">
+                            {niveaux.links.map((link, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => router.get(link.url || '#')}
+                                    disabled={!link.url}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                        link.active
+                                            ? 'bg-gradient-to-r from-purple-600 to-indigo-700 text-white shadow-lg'
+                                            : link.url
+                                            ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-500 hover:text-purple-600'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
-        </Layout>
+        </AppLayout>
     );
 };
 
-export default NiveauxIndex;
+export default Index;

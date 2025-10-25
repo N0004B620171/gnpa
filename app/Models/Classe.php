@@ -22,27 +22,62 @@ class Classe extends Model
 
     public function niveau()
     {
-        return $this->belongsTo(Niveau::class);
+        return $this->belongsTo(Niveau::class, 'niveau_id');
     }
 
     public function professeur()
     {
-        return $this->belongsTo(Professeur::class);
+        return $this->belongsTo(Professeur::class, 'professeur_id');
     }
 
     public function inscriptions()
     {
-        return $this->hasMany(Inscription::class);
+        return $this->hasMany(Inscription::class, 'classe_id');
     }
 
     public function compositions()
     {
-        return $this->hasMany(Composition::class);
+        return $this->hasMany(Composition::class, 'classe_id');
     }
 
     public function elevesActuels()
     {
-        return $this->hasManyThrough(Eleve::class, Inscription::class)
-                    ->where('inscriptions.statut', 'actif');
+        return $this->hasManyThrough(
+            Eleve::class, 
+            Inscription::class,
+            'classe_id', // Clé étrangère sur la table intermédiaire (inscriptions)
+            'id', // Clé étrangère sur la table finale (eleves)
+            'id', // Clé locale sur classes
+            'eleve_id' // Clé locale sur inscriptions
+        )->where('inscriptions.statut', 'actif');
+    }
+
+    // Méthode alternative pour récupérer les élèves actuels
+    public function elevesActuelsViaInscriptions()
+    {
+        return $this->inscriptions()
+                    ->with('eleve')
+                    ->where('statut', 'actif')
+                    ->get()
+                    ->pluck('eleve');
+    }
+
+    // Accessor pour le nom complet de la classe
+    public function getNomCompletAttribute()
+    {
+        return $this->niveau ? $this->niveau->nom . ' ' . $this->nom : $this->nom;
+    }
+
+    public function matieres()
+    {
+        return $this->hasMany(Matiere::class, 'classe_id');
+    }
+
+    // Scope pour les classes avec des élèves actifs
+    public function scopeAvecElevesActifs($query)
+    {
+        return $query->whereHas('inscriptions', function($q) {
+            $q->where('statut', 'actif');
+        });
     }
 }

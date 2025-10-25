@@ -13,8 +13,8 @@ class Bulletin extends Model
     protected $guarded = ['id', 'uid'];
 
     protected $casts = [
-        'moyenne_eleve' => 'float',
-        'moyenne_classe' => 'float',
+        'moyenne_eleve' => 'decimal:2',
+        'moyenne_classe' => 'decimal:2',
         'annuel' => 'boolean'
     ];
 

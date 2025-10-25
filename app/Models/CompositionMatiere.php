@@ -4,9 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Str;
 
-class CompositionMatiere extends Model
+class CompositionMatiere extends Pivot
 {
     use HasFactory;
 
@@ -18,7 +19,7 @@ class CompositionMatiere extends Model
         static::creating(function ($model) {
             if (empty($model->uid)) $model->uid = Str::uuid();
         });
-    }
+    }       
 
     public function composition()
     {

@@ -24,4 +24,29 @@ class Cycle extends Model
     {
         return $this->hasMany(Niveau::class);
     }
+
+    public function langues()
+    {
+        return $this->belongsToMany(Langue::class, 'cycle_langue')
+            ->withTimestamps();
+    }
+    public function nombreLanguesAutorise(): int
+    {
+        return match ($this->systeme) {
+            'standard' => 1,
+            'bilingue' => 2,
+            'trilingue' => 3,
+            default => 1,
+        };
+    }
+
+    public function getSystemeLabelAttribute(): string
+    {
+        return match ($this->systeme) {
+            'standard' => 'Standard',
+            'bilingue' => 'Bilingue',
+            'trilingue' => 'Trilingue',
+            default => 'Inconnu',
+        };
+    }
 }

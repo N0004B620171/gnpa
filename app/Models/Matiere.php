@@ -39,4 +39,11 @@ class Matiere extends Model
     {
         return $this->hasMany(BulletinDetail::class);
     }
+
+    
+    public function professeur()
+    {
+        return $this->belongsTo(Professeur::class);
+    }
+
 }

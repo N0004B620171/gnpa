@@ -1,399 +1,357 @@
 import React, { useState } from 'react';
-import { Head, Link, usePage, router } from '@inertiajs/react';
-import Layout from '@/Components/Layout';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
 
-const CyclesIndex = ({ cycles, filters }) => {
+export default function Index({ cycles, filters, stats }) {
     const { flash } = usePage().props;
-    const [searchTerm, setSearchTerm] = useState(filters?.q || '');
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [editingCycle, setEditingCycle] = useState(null);
-    const [formData, setFormData] = useState({ nom: '' });
+    const [search, setSearch] = useState(filters?.search || '');
+    const [perPage, setPerPage] = useState(filters?.perPage || 10);
 
-    // Recherche avec debounce
-    const handleSearch = (value) => {
-        setSearchTerm(value);
-        router.get(route('cycles.index'), { q: value }, {
+    const debounce = (func, wait) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    };
+
+    const handleSearch = debounce((value) => {
+        router.get('/cycles', { search: value, perPage }, {
+            preserveState: true,
+            replace: true
+        });
+    }, 300);
+
+    const handlePerPageChange = (value) => {
+        setPerPage(value);
+        router.get('/cycles', { search, perPage: value }, {
             preserveState: true,
             replace: true
         });
     };
 
-    const cyclesList = cycles?.data || [];
-
-    // Statistiques
-    const stats = {
-        total: cycles?.total || 0,
-    };
-
-    const resetForm = () => {
-        setFormData({ nom: '' });
-        setEditingCycle(null);
-    };
-
-    const handleCreate = (e) => {
-        e.preventDefault();
-        router.post(route('cycles.store'), formData, {
-            onSuccess: () => {
-                setIsCreateModalOpen(false);
-                resetForm();
-            },
-            preserveScroll: true
-        });
-    };
-
-    const handleEdit = (cycle) => {
-        setEditingCycle(cycle);
-        setFormData({ nom: cycle.nom });
-    };
-
-    const handleUpdate = (e) => {
-        e.preventDefault();
-        router.put(route('cycles.update', editingCycle.id), formData, {
-            onSuccess: () => {
-                setEditingCycle(null);
-                resetForm();
-            },
-            preserveScroll: true
-        });
-    };
-
     const handleDelete = (cycle) => {
         if (confirm(`Êtes-vous sûr de vouloir supprimer le cycle "${cycle.nom}" ?`)) {
-            router.delete(route('cycles.destroy', cycle.id), {
-                preserveScroll: true
-            });
+            router.delete(`/cycles/${cycle.id}`);
         }
     };
 
+    const getSystemeColor = (systeme) => {
+        const colors = {
+            standard: 'from-blue-500 to-blue-600',
+            bilingue: 'from-green-500 to-green-600',
+            trilingue: 'from-purple-500 to-purple-600'
+        };
+        return colors[systeme] || 'from-gray-500 to-gray-600';
+    };
+
+    const getSystemeLabel = (systeme) => {
+        const labels = {
+            standard: 'Standard',
+            bilingue: 'Bilingue',
+            trilingue: 'Trilingue'
+        };
+        return labels[systeme] || systeme;
+    };
+
+    const getCycleColor = (index) => {
+        const colors = [
+            'from-blue-500 to-blue-600',
+            'from-green-500 to-green-600',
+            'from-purple-500 to-purple-600',
+            'from-orange-500 to-orange-600',
+            'from-pink-500 to-pink-600',
+            'from-indigo-500 to-indigo-600'
+        ];
+        return colors[index % colors.length];
+    };
+
     return (
-        <Layout title="Gestion des Cycles">
-            <Head title="Cycles" />
-            
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* En-tête avec statistiques */}
-                <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
-                        <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        <AppLayout>
+            <Head title="Gestion des Cycles" />
+
+            {/* Alertes */}
+            {flash?.success && (
+                <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4">
+                    <div className="flex items-center">
+                        <svg className="h-5 w-5 text-green-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm text-green-800">{flash?.success}</span>
+                    </div>
+                </div>
+            )}
+
+            {flash?.error && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+                    <div className="flex items-center">
+                        <svg className="h-5 w-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm text-red-800">{flash?.error}</span>
+                    </div>
+                </div>
+            )}
+
+            <div className="max-w-7xl mx-auto">
+                {/* En-tête avec gradient */}
+                <div className="bg-gradient-to-r from-cyan-600 to-blue-700 rounded-2xl p-8 text-white mb-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
-                                Cycles Académiques
+                                Gestion des Cycles
                             </h1>
-                            <p className="text-gray-600 mt-2 text-lg">
-                                Gérez les cycles d'enseignement de l'établissement
+                            <p className="text-cyan-100 mt-2 text-lg">
+                                Organisez la structure pédagogique de l'établissement
                             </p>
                         </div>
+                        <div className="mt-4 lg:mt-0">
+                            <Link
+                                href="/cycles/create"
+                                className="inline-flex items-center gap-3 px-6 py-3.5 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white hover:bg-white/30 transition-all duration-200 transform hover:scale-105"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Nouveau Cycle
+                            </Link>
+                        </div>
+                    </div>
+                </div>
 
-                        <button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center justify-center gap-3 px-6 py-3.5 bg-gradient-to-r from-teal-600 to-cyan-700 text-white rounded-xl hover:from-teal-700 hover:to-cyan-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                {/* Statistiques */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0 bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <div className="ml-4">
+                                <dt className="text-sm font-medium text-blue-100">Total</dt>
+                                <dd className="text-2xl font-bold">{stats?.total || 0}</dd>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-6 text-white">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0 bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                                </svg>
+                            </div>
+                            <div className="ml-4">
+                                <dt className="text-sm font-medium text-blue-100">Standard</dt>
+                                <dd className="text-2xl font-bold">{stats?.standard || 0}</dd>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-6 text-white">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0 bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                                </svg>
+                            </div>
+                            <div className="ml-4">
+                                <dt className="text-sm font-medium text-green-100">Bilingue</dt>
+                                <dd className="text-2xl font-bold">{stats?.bilingue || 0}</dd>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-6 text-white">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0 bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                                </svg>
+                            </div>
+                            <div className="ml-4">
+                                <dt className="text-sm font-medium text-purple-100">Trilingue</dt>
+                                <dd className="text-2xl font-bold">{stats?.trilingue || 0}</dd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filtres et Recherche */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-6 space-y-4 lg:space-y-0">
+                        <div className="flex-1">
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher un cycle..."
+                                    defaultValue={search}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        handleSearch(e.target.value);
+                                    }}
+                                    className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-200"
+                                />
+                            </div>
+                        </div>
+                        <div className="lg:w-48">
+                            <select
+                                value={perPage}
+                                onChange={(e) => handlePerPageChange(e.target.value)}
+                                className="block w-full pl-4 pr-10 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-cyan-500/20 focus:border-cyan-500 transition-all duration-200"
+                            >
+                                <option value="10">10 par page</option>
+                                <option value="25">25 par page</option>
+                                <option value="50">50 par page</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Liste des Cycles */}
+                {cycles.data.length === 0 ? (
+                    <div className="text-center py-16 bg-white rounded-2xl shadow-xl border border-gray-200">
+                        <div className="mx-auto h-24 w-24 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
+                            <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun cycle trouvé</h3>
+                        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                            {search ? 'Aucun cycle ne correspond à votre recherche.' : 'Commencez par créer votre premier cycle.'}
+                        </p>
+                        <Link
+                            href="/cycles/create"
+                            className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-700 text-white rounded-xl hover:from-cyan-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            <span className="font-semibold">Nouveau Cycle</span>
-                        </button>
+                            Créer le premier cycle
+                        </Link>
                     </div>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {cycles.data.map((cycle, index) => (
+                                <div key={cycle.id} className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                                    {/* En-tête avec gradient */}
+                                    <div className={`bg-gradient-to-r ${getCycleColor(index)} p-6 text-white`}>
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h3 className="text-xl font-bold">{cycle.nom}</h3>
+                                                <p className="text-blue-100 mt-1 opacity-90">
+                                                    {cycle.niveaux_count} niveau(x) • {cycle.langues_count} langue(s)
+                                                </p>
+                                            </div>
+                                            <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                    {/* Cartes de statistiques */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-teal-800">Total Cycles</p>
-                                    <p className="text-2xl font-bold text-teal-900">{stats.total}</p>
+                                    {/* Contenu */}
+                                    <div className="p-6">
+                                        {/* Informations système */}
+                                        <div className="mb-4">
+                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getSystemeColor(cycle.systeme)} text-white`}>
+                                                {getSystemeLabel(cycle.systeme)}
+                                            </span>
+                                        </div>
+
+                                        {/* Détails */}
+                                        <div className="space-y-3 text-sm text-gray-600">
+                                            <div className="flex items-center">
+                                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                                </svg>
+                                                {cycle.nombre_trimestres} trimestres
+                                            </div>
+                                            <div className="flex items-center">
+                                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Barème: {cycle.bareme}/20
+                                            </div>
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
+                                            <Link
+                                                href={`/cycles/${cycle.id}`}
+                                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 rounded-lg transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                Détails
+                                            </Link>
+                                            <div className="flex space-x-2">
+                                                <Link
+                                                    href={`/cycles/${cycle.id}/edit`}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                    Modifier
+                                                </Link>
+                                                <button
+                                                    onClick={() => handleDelete(cycle)}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                    Supprimer
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="h-12 w-12 bg-teal-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-blue-800">Niveaux Associés</p>
-                                    <p className="text-2xl font-bold text-blue-900">0</p>
-                                </div>
-                                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-purple-800">Classes Actives</p>
-                                    <p className="text-2xl font-bold text-purple-900">0</p>
-                                </div>
-                                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Recherche */}
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Rechercher un cycle..."
-                            value={searchTerm}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white"
-                        />
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                </div>
-
-                {/* Message de succès */}
-                {flash?.success && (
-                    <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-700 p-4 rounded-xl shadow-sm">
-                        <div className="flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="font-medium">{flash.success}</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* Tableau des cycles */}
-                <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                    {cyclesList.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="bg-gradient-to-r from-teal-600 to-cyan-700 text-white">
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Nom du Cycle</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">ID</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Date de Création</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Niveaux</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Classes</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {cyclesList.map((cycle) => (
-                                        <tr key={cycle.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center">
-                                                    <div className="h-10 w-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-full flex items-center justify-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                        </svg>
-                                                    </div>
-                                                    <div className="ml-4">
-                                                        <div className="text-sm font-medium text-gray-900">
-                                                            {cycle.nom}
-                                                        </div>
-                                                        <div className="text-sm text-gray-500">
-                                                            Cycle académique
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                #{cycle.id}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                {new Date(cycle.created_at).toLocaleDateString('fr-FR')}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                                    0 niveaux
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                                                    0 classes
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center space-x-2">
-                                                    <button
-                                                        onClick={() => handleEdit(cycle)}
-                                                        className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 transition-all duration-200"
-                                                        title="Modifier"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => handleDelete(cycle)}
-                                                        className="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
-                                                        title="Supprimer"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun cycle trouvé</h3>
-                            <p className="text-gray-500 mb-6">
-                                {searchTerm ? 
-                                    "Aucun cycle ne correspond à votre recherche." :
-                                    "Commencez par créer votre premier cycle."
-                                }
-                            </p>
-                            {!searchTerm && (
-                                <button
-                                    onClick={() => setIsCreateModalOpen(true)}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    Créer un cycle
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* Pagination */}
-                {cycles?.links && (
-                    <div className="mt-6 flex justify-center">
-                        <div className="flex space-x-2">
-                            {cycles.links.map((link, index) => (
-                                <Link
-                                    key={index}
-                                    href={link.url || '#'}
-                                    className={`px-4 py-2 rounded-lg border ${
-                                        link.active
-                                            ? 'bg-teal-600 text-white border-teal-600'
-                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                    } ${!link.url ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
                             ))}
                         </div>
-                    </div>
+
+                        {/* Pagination */}
+                        {cycles.links.length > 3 && (
+                            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+                                <div className="text-sm text-gray-700">
+                                    Affichage de <span className="font-semibold">{cycles.from}</span> à <span className="font-semibold">{cycles.to}</span> sur <span className="font-semibold">{cycles.total}</span> résultats
+                                </div>
+                                <div className="flex space-x-1">
+                                    {cycles.links.map((link, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => router.get(link.url || '#')}
+                                            disabled={!link.url}
+                                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                                link.active
+                                                    ? 'bg-gradient-to-r from-cyan-600 to-blue-700 text-white shadow-lg'
+                                                    : link.url
+                                                    ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-cyan-500 hover:text-cyan-600'
+                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            }`}
+                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
-
-            {/* Modal de création */}
-            {isCreateModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-                        <div className="bg-gradient-to-r from-teal-600 to-cyan-700 p-6 text-white rounded-t-2xl">
-                            <h2 className="text-xl font-bold flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                </svg>
-                                Nouveau Cycle
-                            </h2>
-                        </div>
-                        <form onSubmit={handleCreate} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Nom du cycle *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.nom}
-                                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                                    placeholder="Ex: Cycle Primaire"
-                                    required
-                                />
-                            </div>
-                            <div className="flex justify-end space-x-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setIsCreateModalOpen(false);
-                                        resetForm();
-                                    }}
-                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-                                >
-                                    Créer
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal d'édition */}
-            {editingCycle && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-700 p-6 text-white rounded-t-2xl">
-                            <h2 className="text-xl font-bold flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Modifier le Cycle
-                            </h2>
-                        </div>
-                        <form onSubmit={handleUpdate} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Nom du cycle *
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.nom}
-                                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                    placeholder="Ex: Cycle Primaire"
-                                    required
-                                />
-                            </div>
-                            <div className="flex justify-end space-x-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setEditingCycle(null);
-                                        resetForm();
-                                    }}
-                                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                                >
-                                    Modifier
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-        </Layout>
+        </AppLayout>
     );
-};
-
-export default CyclesIndex;
+}

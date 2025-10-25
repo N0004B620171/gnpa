@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('niveau_id')->constrained()->cascadeOnDelete();
             $table->string('nom');
             $table->foreignId('professeur_id')->nullable()->constrained('professeurs')->nullOnDelete();
+            $table->integer('capacite')->default(50);
             $table->timestamps();
             
             $table->unique(['niveau_id', 'nom']);

@@ -13,7 +13,7 @@ class Trimestre extends Model
     protected $guarded = ['id', 'uid'];
     
     protected $casts = [
-        'bareme' => 'float'
+        'bareme' => 'decimal:2',
     ];
 
     protected static function boot()
@@ -42,5 +42,10 @@ class Trimestre extends Model
     public function notes()
     {
         return $this->hasManyThrough(Note::class, Composition::class);
+    }
+
+    public function cycle()
+    {
+        return $this->belongsTo(Cycle::class);
     }
 }

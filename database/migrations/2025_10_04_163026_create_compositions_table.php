@@ -15,9 +15,9 @@ return new class extends Migration
             $table->foreignId('classe_id')->constrained()->cascadeOnDelete(); // AJOUT IMPORTANT
             $table->string('langue');
             $table->string('nom', 100);
+            $table->boolean('is_controle')->default(false);
             $table->timestamps();
             $table->unique(['trimestre_id', 'classe_id', 'langue']); // Éviter les doublons
-
             $table->index(['trimestre_id', 'classe_id']);
         });
     }

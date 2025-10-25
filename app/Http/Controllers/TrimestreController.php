@@ -2,26 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AnneeScolaire;
 use App\Models\Trimestre;
+use App\Models\AnneeScolaire;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class TrimestreController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $trimestres = Trimestre::with('anneeScolaire')->latest()->get();
+        $query = Trimestre::with(['anneeScolaire', 'compositions']);
+
+        if ($request->has('q')) {
+            $q = $request->get('q');
+            $query->where('nom', 'like', "%$q%")
+                  ->orWhereHas('anneeScolaire', function($query) use ($q) {
+                      $query->where('nom', 'like', "%$q%");
+                  });
+        }
+
+        $trimestres = $query->withCount('compositions')->latest()->paginate(15);
 
         return Inertia::render('Trimestres/Index', [
             'trimestres' => $trimestres,
-        ]);
-    }
-
-    public function create()
-    {
-        return Inertia::render('Trimestres/Create', [
-            'annees' => AnneeScolaire::all(),
+            'anneeScolaires' => AnneeScolaire::orderBy('nom', 'desc')->get(),
+            'filters' => $request->only('q')
         ]);
     }
 
@@ -29,42 +34,58 @@ class TrimestreController extends Controller
     {
         $validated = $request->validate([
             'annee_scolaire_id' => 'required|exists:annee_scolaires,id',
-            'nom' => 'required|string',
+            'numero' => 'required|integer|between:1,3',
+            'nom' => 'required|string|max:50',
             'date_debut' => 'required|date',
-            'date_fin' => 'required|date|after:date_debut',
+            'date_fin' => 'required|date|after_or_equal:date_debut',
+            'bareme' => 'required|numeric|min:1|max:100'
         ]);
+
+        // Vérifier l'unicité du numéro de trimestre pour l'année scolaire
+        $exists = Trimestre::where('annee_scolaire_id', $validated['annee_scolaire_id'])
+            ->where('numero', $validated['numero'])
+            ->exists();
+
+        if ($exists) {
+            return redirect()->back()->with('error', 'Un trimestre avec ce numéro existe déjà pour cette année scolaire.');
+        }
 
         Trimestre::create($validated);
-
-        return redirect()->route('trimestres.index')->with('success', 'Trimestre ajouté.');
-    }
-
-    public function edit(Trimestre $trimestre)
-    {
-        return Inertia::render('Trimestres/Edit', [
-            'trimestre' => $trimestre,
-            'annees' => AnneeScolaire::all(),
-        ]);
+        return redirect()->back()->with('success', 'Trimestre ajouté avec succès.');
     }
 
     public function update(Request $request, Trimestre $trimestre)
     {
         $validated = $request->validate([
-            'annee_scolaire_id' => 'required|exists:annee_scolaires,id',
-            'nom' => 'required|string',
+            'numero' => 'required|integer|between:1,3',
+            'nom' => 'required|string|max:50',
             'date_debut' => 'required|date',
-            'date_fin' => 'required|date|after:date_debut',
+            'date_fin' => 'required|date|after_or_equal:date_debut',
+            'bareme' => 'required|numeric|min:1|max:100'
         ]);
 
-        $trimestre->update($validated);
+        // Vérifier l'unicité du numéro de trimestre pour l'année scolaire (sauf pour ce trimestre)
+        $exists = Trimestre::where('annee_scolaire_id', $trimestre->annee_scolaire_id)
+            ->where('numero', $validated['numero'])
+            ->where('id', '!=', $trimestre->id)
+            ->exists();
 
-        return redirect()->route('trimestres.index')->with('success', 'Trimestre mis à jour.');
+        if ($exists) {
+            return redirect()->back()->with('error', 'Un trimestre avec ce numéro existe déjà pour cette année scolaire.');
+        }
+
+        $trimestre->update($validated);
+        return redirect()->back()->with('success', 'Trimestre mis à jour avec succès.');
     }
 
     public function destroy(Trimestre $trimestre)
     {
-        $trimestre->delete();
+        // Vérifier s'il y a des compositions associées
+        if ($trimestre->compositions()->exists()) {
+            return redirect()->back()->with('error', 'Impossible de supprimer ce trimestre car il contient des compositions.');
+        }
 
-        return redirect()->route('trimestres.index')->with('success', 'Trimestre supprimé.');
+        $trimestre->delete();
+        return redirect()->back()->with('success', 'Trimestre supprimé avec succès.');
     }
 }

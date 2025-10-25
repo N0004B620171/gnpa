@@ -13,9 +13,9 @@ class BulletinDetail extends Model
     protected $guarded = ['id', 'uid'];
 
     protected $casts = [
-        'note' => 'float',
-        'sur' => 'float',
-        'note_normalisee' => 'float'
+        'note' => 'decimal:2',
+        'sur' => 'decimal:2',
+        'note_normalisee' => 'decimal:2',
     ];
 
     protected static function boot()

@@ -12,6 +12,9 @@ return new class extends Migration
             $table->id();
             $table->uuid('uid')->unique();
             $table->string('nom');
+            $table->decimal('bareme', 5, 2)->default(10);
+            $table->unsignedTinyInteger('nombre_trimestres')->default(3); // 2 ou 3 selon le cycle
+            $table->enum('systeme', ['standard', 'bilingue', 'trilingue'])->default('standard');
             $table->timestamps();
         });
     }

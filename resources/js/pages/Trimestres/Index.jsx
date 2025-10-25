@@ -1,360 +1,620 @@
 import React, { useState } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
-import Layout from '@/Components/Layout';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
 
-const TrimestresIndex = ({ trimestres }) => {
+const Index = ({ trimestres, anneeScolaires, filters }) => {
     const { flash } = usePage().props;
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterAnnee, setFilterAnnee] = useState('');
+    const [search, setSearch] = useState(filters.q || '');
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [selectedTrimestre, setSelectedTrimestre] = useState(null);
+    const [formData, setFormData] = useState({
+        annee_scolaire_id: '',
+        numero: '',
+        nom: '',
+        date_debut: '',
+        date_fin: '',
+        bareme: 20
+    });
 
-    // Filtrer les trimestres
-    const filteredTrimestres = trimestres.filter(trimestre =>
-        trimestre.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        trimestre.annee_scolaire?.nom.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // Années uniques pour le filtre
-    const annees = [...new Set(trimestres.map(t => t.annee_scolaire).filter(Boolean))];
-
-    // Calculer le statut
-    const getStatut = (trimestre) => {
-        const aujourdhui = new Date();
-        const debut = new Date(trimestre.date_debut);
-        const fin = new Date(trimestre.date_fin);
-
-        if (aujourdhui >= debut && aujourdhui <= fin) return 'en_cours';
-        if (aujourdhui < debut) return 'a_venir';
-        return 'termine';
-    };
-
-    const getStatutColor = (statut) => {
-        const colors = {
-            en_cours: 'bg-green-100 text-green-800 border-green-200',
-            a_venir: 'bg-blue-100 text-blue-800 border-blue-200',
-            termine: 'bg-gray-100 text-gray-800 border-gray-200',
+    const debounce = (func, wait) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
         };
-        return colors[statut] || colors.termine;
     };
 
-    const getStatutLabel = (statut) => {
-        const labels = {
-            en_cours: 'En cours',
-            a_venir: 'À venir',
-            termine: 'Terminé',
-        };
-        return labels[statut] || 'Terminé';
+    const handleSearch = debounce((value) => {
+        router.get('/trimestres', { q: value }, {
+            preserveState: true,
+            replace: true
+        });
+    }, 300);
+
+    const handleCreate = () => {
+        setFormData({
+            annee_scolaire_id: '',
+            numero: '',
+            nom: '',
+            date_debut: '',
+            date_fin: '',
+            bareme: 20
+        });
+        setShowCreateModal(true);
     };
 
-    // Statistiques
-    const stats = {
-        total: trimestres.length,
-        enCours: trimestres.filter(t => getStatut(t) === 'en_cours').length,
-        aVenir: trimestres.filter(t => getStatut(t) === 'a_venir').length,
-        termines: trimestres.filter(t => getStatut(t) === 'termine').length,
+    const handleEdit = (trimestre) => {
+        setSelectedTrimestre(trimestre);
+        setFormData({
+            annee_scolaire_id: trimestre.annee_scolaire_id,
+            numero: trimestre.numero,
+            nom: trimestre.nom,
+            date_debut: trimestre.date_debut,
+            date_fin: trimestre.date_fin,
+            bareme: trimestre.bareme
+        });
+        setShowEditModal(true);
+    };
+
+    const handleSubmitCreate = (e) => {
+        e.preventDefault();
+        router.post('/trimestres', formData, {
+            onSuccess: () => {
+                setShowCreateModal(false);
+                setFormData({
+                    annee_scolaire_id: '',
+                    numero: '',
+                    nom: '',
+                    date_debut: '',
+                    date_fin: '',
+                    bareme: 20
+                });
+            }
+        });
+    };
+
+    const handleSubmitEdit = (e) => {
+        e.preventDefault();
+        router.put(`/trimestres/${selectedTrimestre.id}`, formData, {
+            onSuccess: () => {
+                setShowEditModal(false);
+                setSelectedTrimestre(null);
+            }
+        });
+    };
+
+    const handleDelete = (trimestre) => {
+        if (confirm(`Êtes-vous sûr de vouloir supprimer le trimestre "${trimestre.nom}" ? Cette action supprimera également toutes les compositions associées.`)) {
+            router.delete(`/trimestres/${trimestre.id}`);
+        }
+    };
+
+    const getStatusColor = (trimestre) => {
+        const now = new Date();
+        const start = new Date(trimestre.date_debut);
+        const end = new Date(trimestre.date_fin);
+
+        if (now < start) return 'bg-blue-100 text-blue-800 border-blue-200';
+        if (now > end) return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-green-100 text-green-800 border-green-200';
+    };
+
+    const getStatusText = (trimestre) => {
+        const now = new Date();
+        const start = new Date(trimestre.date_debut);
+        const end = new Date(trimestre.date_fin);
+
+        if (now < start) return 'À venir';
+        if (now > end) return 'Terminé';
+        return 'En cours';
+    };
+
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString('fr-FR');
+    };
+
+    const getAnneeScolaireNom = (trimestre) => {
+        return trimestre.annee_scolaire?.nom || 'N/A';
+    };
+
+    const isAnneeScolaireActive = (trimestre) => {
+        return trimestre.annee_scolaire?.actif || false;
     };
 
     return (
-        <Layout title="Gestion des Trimestres">
-            <Head title="Trimestres" />
+        <AppLayout>
+            <Head title="Gestion des Trimestres" />
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* En-tête avec statistiques */}
-                <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
-                        <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            {/* Alertes */}
+            {flash?.success && (
+                <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-green-800">
+                                {flash.success}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {flash?.error && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-red-800">
+                                {flash.error}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="max-w-7xl mx-auto">
+                {/* En-tête avec gradient */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 text-white mb-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                                 Gestion des Trimestres
                             </h1>
-                            <p className="text-gray-600 mt-2 text-lg">
-                                Gérez les périodes trimestrielles de votre établissement
+                            <p className="text-blue-100 mt-2 text-lg">
+                                Organisez les périodes d'évaluation de l'année scolaire
                             </p>
                         </div>
-
-                        <Link
-                            href={route('trimestres.create')}
-                            className="flex items-center justify-center gap-3 px-6 py-3.5 bg-gradient-to-r from-teal-600 to-cyan-700 text-white rounded-xl hover:from-teal-700 hover:to-cyan-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            <span className="font-semibold">Nouveau Trimestre</span>
-                        </Link>
-                    </div>
-
-                    {/* Cartes de statistiques */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-teal-800">Total Trimestres</p>
-                                    <p className="text-2xl font-bold text-teal-900">{stats.total}</p>
-                                </div>
-                                <div className="h-12 w-12 bg-teal-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-green-800">En cours</p>
-                                    <p className="text-2xl font-bold text-green-900">{stats.enCours}</p>
-                                </div>
-                                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-blue-800">À venir</p>
-                                    <p className="text-2xl font-bold text-blue-900">{stats.aVenir}</p>
-                                </div>
-                                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-4 border border-gray-200">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-800">Terminés</p>
-                                    <p className="text-2xl font-bold text-gray-900">{stats.termines}</p>
-                                </div>
-                                <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Filtres et recherche */}
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                        <div className="lg:col-span-2">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Rechercher un trimestre ou une année..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white"
-                                />
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <select
-                                value={filterAnnee}
-                                onChange={(e) => setFilterAnnee(e.target.value)}
-                                className="w-full px-4 py-3 pr-10 rounded-xl border-2 border-gray-200 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/20 transition-all duration-200 bg-white appearance-none"
+                        <div className="mt-4 lg:mt-0">
+                            <button
+                                onClick={handleCreate}
+                                className="inline-flex items-center gap-3 px-6 py-3.5 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white hover:bg-white/30 transition-all duration-200 transform hover:scale-105"
                             >
-                                <option value="">Toutes les années</option>
-                                {annees.map((annee) => (
-                                    <option key={annee.id} value={annee.id}>
-                                        {annee.nom}
-                                    </option>
-                                ))}
-                            </select>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute right-3 top-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                            </svg>
-                        </div>
-
-                        <div className="bg-teal-50 rounded-xl p-3 flex items-center justify-center border border-teal-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-teal-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="text-sm font-semibold text-teal-700">
-                                {filteredTrimestres.length} trimestre(s)
-                            </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Nouveau Trimestre
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Message de succès */}
-                {flash?.success && (
-                    <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-700 p-4 rounded-xl shadow-sm">
-                        <div className="flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span className="font-medium">{flash.success}</span>
+                {/* Filtres et Recherche */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                        <div className="lg:w-96">
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher un trimestre..."
+                                    defaultValue={search}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        handleSearch(e.target.value);
+                                    }}
+                                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                En cours
+                            </div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                                À venir
+                            </div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
+                                Terminé
+                            </div>
                         </div>
                     </div>
-                )}
+                </div>
 
-                {/* Grille des trimestres */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredTrimestres.length > 0 ? (
-                        filteredTrimestres.map((trimestre) => {
-                            const statut = getStatut(trimestre);
-                            const statutColor = getStatutColor(statut);
-                            const statutLabel = getStatutLabel(statut);
-                            const duree = Math.ceil((new Date(trimestre.date_fin) - new Date(trimestre.date_debut)) / (1000 * 60 * 60 * 24));
+                {/* Liste des Trimestres */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {trimestres.data.map((trimestre) => (
+                        <div key={trimestre.id} className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                            {/* En-tête avec statut */}
+                            <div className={`p-6 text-white ${isAnneeScolaireActive(trimestre) ? 'bg-gradient-to-r from-blue-600 to-indigo-700' : 'bg-gradient-to-r from-gray-600 to-gray-700'}`}>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-xl font-bold">{trimestre.nom}</h3>
+                                        <p className="text-blue-100 mt-1">
+                                            {getAnneeScolaireNom(trimestre)}
+                                            {isAnneeScolaireActive(trimestre) && (
+                                                <span className="ml-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                                                    Active
+                                                </span>
+                                            )}
+                                        </p>
+                                    </div>
+                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(trimestre)}`}>
+                                        {getStatusText(trimestre)}
+                                    </span>
+                                </div>
+                            </div>
 
-                            return (
-                                <div
-                                    key={trimestre.id}
-                                    className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 hover:border-teal-300 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl"
-                                >
-                                    <div className="p-6">
-                                        {/* En-tête de la carte */}
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="flex items-center space-x-3">
-                                                <div className="h-12 w-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-sm">
-                                                    <span className="text-white font-bold text-sm">
-                                                        {trimestre.nom.charAt(0)}
-                                                    </span>
+                            {/* Contenu */}
+                            <div className="p-6">
+                                {/* Numéro et Barème */}
+                                <div className="flex justify-between items-center mb-4">
+                                    <div className="text-sm text-gray-600">
+                                        Trimestre #{trimestre.numero}
+                                    </div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                        Barème: {trimestre.bareme}/20
+                                    </div>
+                                </div>
+
+                                {/* Période */}
+                                <div className="mb-4">
+                                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                                        <span>Période</span>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-xl p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-center">
+                                                <div className="text-sm font-medium text-gray-900">Début</div>
+                                                <div className="text-lg font-bold text-blue-600">
+                                                    {formatDate(trimestre.date_debut)}
                                                 </div>
                                             </div>
-                                            <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                                ID: {trimestre.id}
-                                            </div>
-                                        </div>
-
-                                        {/* Nom du trimestre */}
-                                        <h3 className="text-xl font-bold text-gray-900 mb-2">
-                                            {trimestre.nom}
-                                        </h3>
-
-                                        {/* Année scolaire */}
-                                        <div className="mb-3">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                                {trimestre.annee_scolaire?.nom}
-                                            </span>
-                                        </div>
-
-                                        {/* Période */}
-                                        <div className="space-y-3 mb-4">
-                                            <div className="flex items-center space-x-2">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        Du {new Date(trimestre.date_debut).toLocaleDateString('fr-FR')}
-                                                    </div>
-                                                    <div className="text-sm text-gray-900">
-                                                        Au {new Date(trimestre.date_fin).toLocaleDateString('fr-FR')}
-                                                    </div>
+                                            <div className="text-gray-400 mx-2">→</div>
+                                            <div className="text-center">
+                                                <div className="text-sm font-medium text-gray-900">Fin</div>
+                                                <div className="text-lg font-bold text-blue-600">
+                                                    {formatDate(trimestre.date_fin)}
                                                 </div>
-                                            </div>
-
-                                            {/* Durée */}
-                                            <div className="flex items-center space-x-2">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <div className="text-sm text-gray-600">
-                                                    {duree} jours
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Statut et indicateurs */}
-                                        <div className="grid grid-cols-2 gap-3 mb-4">
-                                            <div className={`rounded-lg p-2 text-center border ${statutColor}`}>
-                                                <div className="text-sm font-bold">{statutLabel}</div>
-                                            </div>
-                                            <div className="bg-gray-50 rounded-lg p-2 text-center">
-                                                <div className="text-lg font-bold text-gray-900">0</div>
-                                                <div className="text-xs text-gray-500">Évaluations</div>
-                                            </div>
-                                        </div>
-
-                                        {/* Actions */}
-                                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                                            <div className="text-xs text-gray-500">
-                                                Créé le {new Date(trimestre.created_at).toLocaleDateString('fr-FR')}
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Link
-                                                    href={route('trimestres.edit', trimestre.id)}
-                                                    className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 transition-all duration-200"
-                                                    title="Modifier"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                </Link>
-
-                                                <Link
-                                                    as="button"
-                                                    method="delete"
-                                                    href={route('trimestres.destroy', trimestre.id)}
-                                                    onClick={() => confirm('Êtes-vous sûr de vouloir supprimer ce trimestre ?')}
-                                                    className="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
-                                                    title="Supprimer"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </Link>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            );
-                        })
-                    ) : (
-                        <div className="col-span-full">
-                            <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun trimestre trouvé</h3>
-                                <p className="text-gray-500 mb-6">
-                                    {searchTerm || filterAnnee ?
-                                        "Aucun trimestre ne correspond à vos critères de recherche." :
-                                        "Commencez par créer votre premier trimestre."
-                                    }
-                                </p>
-                                {(searchTerm || filterAnnee) ? (
-                                    <button
-                                        onClick={() => {
-                                            setSearchTerm('');
-                                            setFilterAnnee('');
-                                        }}
-                                        className="text-teal-600 hover:text-teal-700 font-medium"
-                                    >
-                                        Réinitialiser les filtres
-                                    </button>
-                                ) : (
-                                    <Link
-                                        href={route('trimestres.create')}
-                                        className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                        </svg>
-                                        Créer un trimestre
-                                    </Link>
-                                )}
+
+                                {/* Durée */}
+                                <div className="mb-4">
+                                    <div className="flex justify-between text-sm text-gray-600">
+                                        <span>Durée</span>
+                                        <span className="font-medium">
+                                            {Math.ceil((new Date(trimestre.date_fin) - new Date(trimestre.date_debut)) / (1000 * 60 * 60 * 24))} jours
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Statistiques (placeholder pour compositions) */}
+                                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                    <div className="text-sm text-blue-800 text-center">
+                                        {trimestre.compositions_count || 0} composition(s) associée(s)
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                                    <div className="text-xs text-gray-500">
+                                        Créé le {formatDate(trimestre.created_at)}
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={() => handleEdit(trimestre)}
+                                            className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-xl transition-all duration-200"
+                                            title="Modifier"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(trimestre)}
+                                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-xl transition-all duration-200"
+                                            title="Supprimer"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    )}
+                    ))}
                 </div>
+
+                {/* Message vide */}
+                {trimestres.data.length === 0 && (
+                    <div className="text-center py-16 bg-white rounded-2xl shadow-xl border border-gray-200">
+                        <div className="mx-auto h-24 w-24 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
+                            <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun trimestre trouvé</h3>
+                        <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                            {search ? 'Aucun trimestre ne correspond à votre recherche.' : 'Commencez par créer votre premier trimestre.'}
+                        </p>
+                        <button
+                            onClick={handleCreate}
+                            className="inline-flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Créer le premier trimestre
+                        </button>
+                    </div>
+                )}
+
+                {/* Pagination */}
+                {trimestres.data.length > 0 && (
+                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+                        <div className="text-sm text-gray-700">
+                            Affichage de <span className="font-semibold">{trimestres.from}</span> à <span className="font-semibold">{trimestres.to}</span> sur <span className="font-semibold">{trimestres.total}</span> résultats
+                        </div>
+                        <div className="flex space-x-1">
+                            {trimestres.links.map((link, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => router.get(link.url || '#')}
+                                    disabled={!link.url}
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                                        link.active
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg'
+                                            : link.url
+                                            ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-500 hover:text-blue-600'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
-        </Layout>
+
+            {/* Modal de création */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white rounded-t-2xl">
+                            <h3 className="text-xl font-bold">Nouveau Trimestre</h3>
+                            <p className="text-blue-100 mt-1">Ajouter une nouvelle période d'évaluation</p>
+                        </div>
+                        
+                        <form onSubmit={handleSubmitCreate} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Année scolaire *
+                                </label>
+                                <select
+                                    value={formData.annee_scolaire_id}
+                                    onChange={(e) => setFormData({...formData, annee_scolaire_id: e.target.value})}
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                    required
+                                >
+                                    <option value="">Sélectionnez une année scolaire</option>
+                                    {anneeScolaires.map((annee) => (
+                                        <option key={annee.id} value={annee.id}>
+                                            {annee.nom} {annee.actif && '(Active)'}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Numéro du trimestre *
+                                </label>
+                                <select
+                                    value={formData.numero}
+                                    onChange={(e) => setFormData({...formData, numero: e.target.value})}
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                    required
+                                >
+                                    <option value="">Sélectionnez le numéro</option>
+                                    <option value="1">1 - Premier trimestre</option>
+                                    <option value="2">2 - Deuxième trimestre</option>
+                                    <option value="3">3 - Troisième trimestre</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Nom du trimestre *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.nom}
+                                    onChange={(e) => setFormData({...formData, nom: e.target.value})}
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                    placeholder="Ex: Trimestre 1"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Date de début *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.date_debut}
+                                        onChange={(e) => setFormData({...formData, date_debut: e.target.value})}
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Date de fin *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.date_fin}
+                                        onChange={(e) => setFormData({...formData, date_fin: e.target.value})}
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Barème
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    min="1"
+                                    max="100"
+                                    value={formData.bareme}
+                                    onChange={(e) => setFormData({...formData, bareme: e.target.value})}
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Note maximale par défaut pour les évaluations</p>
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 transition-all duration-200"
+                                >
+                                    Créer
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal d'édition */}
+            {showEditModal && selectedTrimestre && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+                        <div className="bg-gradient-to-r from-green-600 to-emerald-700 p-6 text-white rounded-t-2xl">
+                            <h3 className="text-xl font-bold">Modifier le Trimestre</h3>
+                            <p className="text-green-100 mt-1">Mettre à jour les informations du trimestre</p>
+                        </div>
+                        
+                        <form onSubmit={handleSubmitEdit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Numéro du trimestre *
+                                </label>
+                                <select
+                                    value={formData.numero}
+                                    onChange={(e) => setFormData({...formData, numero: e.target.value})}
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                    required
+                                >
+                                    <option value="1">1 - Premier trimestre</option>
+                                    <option value="2">2 - Deuxième trimestre</option>
+                                    <option value="3">3 - Troisième trimestre</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Nom du trimestre *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.nom}
+                                    onChange={(e) => setFormData({...formData, nom: e.target.value})}
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                    placeholder="Ex: Trimestre 1"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Date de début *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.date_debut}
+                                        onChange={(e) => setFormData({...formData, date_debut: e.target.value})}
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Date de fin *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.date_fin}
+                                        onChange={(e) => setFormData({...formData, date_fin: e.target.value})}
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Barème
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.5"
+                                    min="1"
+                                    max="100"
+                                    value={formData.bareme}
+                                    onChange={(e) => setFormData({...formData, bareme: e.target.value})}
+                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                />
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditModal(false)}
+                                    className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-700 text-white rounded-xl hover:from-green-700 hover:to-emerald-800 transition-all duration-200"
+                                >
+                                    Mettre à jour
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </AppLayout>
     );
 };
 
-export default TrimestresIndex;
+export default Index;

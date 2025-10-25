@@ -18,6 +18,8 @@ const Layout = ({ children, title }) => {
         { name: 'Trimestres', href: route('trimestres.index'), icon: '📋', current: url.startsWith('/trimestres') },
     ];
 
+    
+
     return (
         <>
             {/* Styles CSS pour résoudre les problèmes de visibilité */}
