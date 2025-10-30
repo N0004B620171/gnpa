@@ -22,7 +22,12 @@ use App\Http\Controllers\BusController;
 use App\Http\Controllers\ItineraireTransportController;
 use App\Http\Controllers\ArretController;
 use App\Http\Controllers\AffectationTransportController;
+use App\Http\Controllers\HistoriqueTransfertController;
+use App\Http\Controllers\InventaireClasseController;
+use App\Http\Controllers\InventaireEnseignantController;
+use App\Http\Controllers\MaterielController;
 use App\Http\Controllers\ModeleExcelController;
+use App\Http\Controllers\TransfertAnneeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -54,6 +59,23 @@ Route::get('/api/telecharger-modele-excel', [ModeleExcelController::class, 'tele
     ->name('api.telecharger-modele-excel');
 
 Route::resource('niveaux', NiveauController::class);
+
+Route::resource('materiels', MaterielController::class);
+Route::resource('inventaires-classes', InventaireClasseController::class);
+Route::resource('inventaires-enseignants', InventaireEnseignantController::class);
+
+// routes/web.php
+Route::prefix('transfert')->group(function () {
+    Route::get('/', [TransfertAnneeController::class, 'index'])->name('transfert.index');
+    Route::post('/transferer', [TransfertAnneeController::class, 'transferer'])->name('transfert.transferer');
+    Route::post('/annuler/{id}', [TransfertAnneeController::class, 'annuler'])->name('transfert.annuler');
+});
+
+Route::prefix('historique-transferts')->group(function () {
+    Route::get('/', [HistoriqueTransfertController::class, 'index'])->name('historique-transferts.index');
+    Route::get('/{historiqueTransfert}', [HistoriqueTransfertController::class, 'show'])->name('historique-transferts.show');
+    Route::post('/annuler/{id}', [HistoriqueTransfertController::class, 'annuler'])->name('historique-transferts.annuler');
+});
 
 Route::resource('cycles', CycleController::class);
 Route::get('/cycles/stats', [CycleController::class, 'stats'])->name('cycles.stats');
@@ -143,10 +165,10 @@ Route::post('/niveaux/{niveau}/associer-service', [NiveauController::class, 'ass
 Route::delete('/service-ciblages/{serviceCiblage}', [NiveauController::class, 'dissocierService'])->name('niveaux.dissocier-service');
 // Paiements
 
-   // Ancienne logique : Les paiements sont liés aux factures
-    Route::get('/factures/{facture}/paiements/create', [PaiementController::class, 'create'])->name('paiements.create');
-    Route::post('/factures/{facture}/paiements', [PaiementController::class, 'store'])->name('paiements.store');
-    
+// Ancienne logique : Les paiements sont liés aux factures
+Route::get('/factures/{facture}/paiements/create', [PaiementController::class, 'create'])->name('paiements.create');
+Route::post('/factures/{facture}/paiements', [PaiementController::class, 'store'])->name('paiements.store');
+
 // Transport
 Route::resource('buses', BusController::class)->except(['show']);
 Route::resource('itineraires-transports', ItineraireTransportController::class);

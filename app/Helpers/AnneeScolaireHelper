@@ -1,0 +1,109 @@
+<?php
+
+namespace App\Helpers;
+
+use App\Models\Inscription;
+use App\Models\TransfertAnnee;
+use App\Models\HistoriqueTransfert;
+use App\Models\Bulletin;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class AnneeScolaireHelper
+{
+    public static function transfererVersNouvelleAnnee($ancienneAnneeId, $nouvelleAnneeId, $mappingClasses)
+    {
+        $nouveauxInscriptions = [];
+        $transferts = [];
+        $stats = ['passant' => 0, 'redoublant' => 0, 'sortant' => 0];
+        $historique = null;
+
+        DB::transaction(function () use (
+            $ancienneAnneeId,
+            $nouvelleAnneeId,
+            $mappingClasses,
+            &$nouveauxInscriptions,
+            &$transferts,
+            &$stats,
+            &$historique
+        ) {
+            $inscriptions = Inscription::with(['eleve', 'classe.niveau.cycle'])
+                ->where('annee_scolaire_id', $ancienneAnneeId)
+                ->where('statut', 'actif')
+                ->get();
+
+            foreach ($inscriptions as $inscription) {
+                $cycle = $inscription->classe->niveau->cycle;
+                $systeme = $cycle->systeme ?? 'standard';
+                $classeActuelle = $inscription->classe_id;
+                $nouvelleClasseId = $mappingClasses[$classeActuelle] ?? null;
+
+                // Vérifier si l'élève a un bulletin pertinent
+                $bulletin = Bulletin::where('inscription_id', $inscription->id)
+                    ->when($systeme === 'standard', fn($q) => $q->where('mark_as_last', true))
+                    ->when(in_array($systeme, ['bilingue', 'trilingue']), fn($q) => $q->where('annuel', true))
+                    ->first();
+
+                // Déterminer le statut
+                if (!$bulletin) {
+                    $statut = 'sortant';
+                } else {
+                    $moyenne = $bulletin->moyenne_globale ?? $bulletin->moyenne_eleve;
+                    $moyenneMin = $inscription->classe->niveau->moyenne_min_pour_passage ?? 10;
+
+                    if ($moyenne >= $moyenneMin) {
+                        $statut = 'passant';
+                    } else {
+                        $statut = 'redoublant';
+                        $nouvelleClasseId = $classeActuelle; // Redouble dans la même classe
+                    }
+                }
+
+                // Créer l'enregistrement de transfert
+                $transfert = TransfertAnnee::create([
+                    'uid' => Str::uuid(),
+                    'inscription_id' => $inscription->id,
+                    'ancienne_annee_id' => $ancienneAnneeId,
+                    'nouvelle_annee_id' => $nouvelleAnneeId,
+                    'statut' => $statut,
+                    'nouvelle_classe_id' => $nouvelleClasseId,
+                ]);
+
+                $transferts[] = $transfert->id;
+
+                // Créer une nouvelle inscription si non sortant
+                if (in_array($statut, ['passant', 'redoublant']) && $nouvelleClasseId) {
+                    $nouvelle = Inscription::create([
+                        'uid' => Str::uuid(),
+                        'classe_id' => $nouvelleClasseId,
+                        'eleve_id' => $inscription->eleve_id,
+                        'annee_scolaire_id' => $nouvelleAnneeId,
+                        'date_inscription' => now(),
+                        'statut' => 'actif',
+                    ]);
+                    $nouveauxInscriptions[] = $nouvelle->id;
+                }
+
+                $stats[$statut]++;
+            }
+
+            // Créer l'historique
+            $historique = HistoriqueTransfert::create([
+                'uid' => Str::uuid(),
+                'ancienne_annee_id' => $ancienneAnneeId,
+                'nouvelle_annee_id' => $nouvelleAnneeId,
+                'nouveaux_inscriptions_ids' => json_encode($nouveauxInscriptions),
+                'transferts_ids' => json_encode($transferts),
+                'annulable' => true,
+            ]);
+        });
+
+        return [
+            'total' => array_sum($stats),
+            'passants' => $stats['passant'],
+            'redoublants' => $stats['redoublant'],
+            'sortants' => $stats['sortant'],
+            'historique_id' => $historique?->id,
+        ];
+    }
+}

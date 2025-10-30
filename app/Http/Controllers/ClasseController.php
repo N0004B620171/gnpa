@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Helpers\ServiceCiblageHelper;
 use App\Models\Buse;
+use App\Models\InventaireClasse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -98,8 +99,15 @@ class ClasseController extends Controller
             'compositions',
             'inscriptions.eleve.parentEleve',
             'inscriptions.affectationTransport.itineraireTransport.bus',
-            'inscriptions.factures'
+            'inscriptions.factures',
+            'inventaireClasses.materiel'
+
         ])->findOrFail($id);
+
+        // Récupérer l'inventaire de la classe
+        $inventaires = InventaireClasse::with(['materiel'])
+            ->where('classe_id', $id)
+            ->get();
 
         // Récupérer les élèves actifs avec leurs relations
         $eleves = $classe->inscriptions()
@@ -164,7 +172,8 @@ class ClasseController extends Controller
             'affectationsTransport' => $affectationsTransport,
             'busUtilises' => $busUtilises,
             'itineraires' => $itineraires,
-            'anneesScolaires' => $anneesScolaires
+            'anneesScolaires' => $anneesScolaires,
+            'inventaires' => $inventaires 
         ]);
     }
 
@@ -418,8 +427,9 @@ class ClasseController extends Controller
             ->with('success', 'Classe mise à jour avec succès');
     }
 
-    public function destroy(Classe $classe)
+    public function destroy($id)
     {
+        $classe = Classe::findOrFail($id);
         if ($classe->inscriptions()->where('statut', 'actif')->exists()) {
             return redirect()->back()
                 ->with('error', 'Impossible de supprimer cette classe car elle contient des élèves actifs');

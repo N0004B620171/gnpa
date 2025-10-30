@@ -12,6 +12,7 @@ use App\Observers\PaiementObserver;
 use App\Observers\ServiceCiblageObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
+use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,5 +34,15 @@ class AppServiceProvider extends ServiceProvider
         ServiceCiblage::observe(ServiceCiblageObserver::class);
         Paiement::observe(PaiementObserver::class);
         Schema::defaultStringLength(191);
+        Inertia::share([
+            'flash' => function () {
+                return [
+                    'success' => session('success'),
+                    'error' => session('error'),
+                    'info' => session('info'),
+                    'warning' => session('warning'),
+                ];
+            },
+        ]);
     }
 }

@@ -40,10 +40,16 @@ class Classe extends Model
         return $this->hasMany(Composition::class, 'classe_id');
     }
 
+    public function inventaireClasses()
+    {
+        return $this->hasMany(InventaireClasse::class);
+    }
+
+
     public function elevesActuels()
     {
         return $this->hasManyThrough(
-            Eleve::class, 
+            Eleve::class,
             Inscription::class,
             'classe_id', // Clé étrangère sur la table intermédiaire (inscriptions)
             'id', // Clé étrangère sur la table finale (eleves)
@@ -56,10 +62,10 @@ class Classe extends Model
     public function elevesActuelsViaInscriptions()
     {
         return $this->inscriptions()
-                    ->with('eleve')
-                    ->where('statut', 'actif')
-                    ->get()
-                    ->pluck('eleve');
+            ->with('eleve')
+            ->where('statut', 'actif')
+            ->get()
+            ->pluck('eleve');
     }
 
     // Accessor pour le nom complet de la classe
@@ -76,7 +82,7 @@ class Classe extends Model
     // Scope pour les classes avec des élèves actifs
     public function scopeAvecElevesActifs($query)
     {
-        return $query->whereHas('inscriptions', function($q) {
+        return $query->whereHas('inscriptions', function ($q) {
             $q->where('statut', 'actif');
         });
     }

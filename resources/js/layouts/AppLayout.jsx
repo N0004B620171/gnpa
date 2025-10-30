@@ -1,13 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link, usePage } from "@inertiajs/react";
+import { Toaster, toast } from "react-hot-toast";
 
-/**
- * Layout principal — Inertia React
- * - Surligne le lien actif
- * - Conserve le scroll de la sidebar
- * - Ouvre la bonne section selon l'URL
- * - Scroll vers le lien actif après navigation
- */
 const AppLayout = ({ children }) => {
   const { url, flash, auth } = usePage().props;
   const sidebarRef = useRef(null);
@@ -15,41 +9,40 @@ const AppLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // Sections ouvertes/fermées (persistées en localStorage)
-  const [openSections, setOpenSections] = useState(() => {
-    if (typeof window === "undefined") {
-      return {
-        gestionEleves: true,
-        organisation: true,
-        scolarite: true,
-        finances: true,
-        transport: true,
-      };
-    }
-    const saved = window.localStorage.getItem("openSections");
-    return (
-      (saved && JSON.parse(saved)) || {
-        gestionEleves: true,
-        organisation: true,
-        scolarite: true,
-        finances: true,
-        transport: true,
-      }
-    );
+  // Une seule section ouverte à la fois
+  const [openSection, setOpenSection] = useState(() => {
+    if (typeof window === "undefined") return "organisation";
+
+    const saved = window.localStorage.getItem("openSection");
+    return saved || "organisation";
   });
 
-  // ✅ Persister l'état des sections
+
+  useEffect(() => {
+    if (flash?.success) {
+      toast.success(flash.success, {
+        duration: 4000,
+        position: "top-right",
+      });
+    } else if (flash?.error) {
+      toast.error(flash.error, {
+        duration: 4000,
+        position: "top-right",
+      });
+    }
+  }, [flash]);
+
+  // ✅ Persister la section ouverte
   useEffect(() => {
     try {
-      localStorage.setItem("openSections", JSON.stringify(openSections));
-    } catch (_) {}
-  }, [openSections]);
+      localStorage.setItem("openSection", openSection);
+    } catch (_) { }
+  }, [openSection]);
 
-  // ✅ Restaurer le scroll de la sidebar (si présent)
+  // ✅ Restaurer le scroll de la sidebar
   useEffect(() => {
     const savedScroll = sessionStorage.getItem("sidebarScroll");
     if (sidebarRef.current && savedScroll) {
-      // Petit délai pour s'assurer que le DOM est prêt
       setTimeout(() => {
         sidebarRef.current.scrollTop = parseInt(savedScroll, 10) || 0;
       }, 50);
@@ -60,13 +53,13 @@ const AppLayout = ({ children }) => {
   useEffect(() => {
     const el = sidebarRef.current;
     if (!el) return;
-    
+
     const onScroll = () => {
       try {
         sessionStorage.setItem("sidebarScroll", String(el.scrollTop));
-      } catch (_) {}
+      } catch (_) { }
     };
-    
+
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
@@ -74,57 +67,37 @@ const AppLayout = ({ children }) => {
   // ✅ Ouvrir automatiquement la section qui correspond à l'URL
   useEffect(() => {
     if (!url) return;
-    
-    setOpenSections((prev) => ({
-      ...prev,
-      transport:
-        prev.transport ||
-        url.includes("/buses") ||
-        url.includes("/itineraires-transports") ||
-        url.includes("/arrets") ||
-        url.includes("/affectations-transports"),
-      finances:
-        prev.finances ||
-        url.includes("/services") ||
-        url.includes("/factures") ||
-        url.includes("/paiements"),
-      gestionEleves:
-        prev.gestionEleves ||
-        url.includes("/eleves") ||
-        url.includes("/parents") ||
-        url.includes("/inscriptions"),
-      organisation:
-        prev.organisation ||
-        url.includes("/professeurs") ||
-        url.includes("/classes") ||
-        url.includes("/matieres") ||
-        url.includes("/cycles") ||
-        url.includes("/niveaux") ||
-        url.includes("/annees-scolaires") ||
-        url.includes("/trimestres"),
-      scolarite:
-        prev.scolarite ||
-        url.includes("/compositions") ||
-        url.includes("/notes") ||
-        url.includes("/bulletins"),
-    }));
+
+    if (url.includes("/eleves") || url.includes("/parents") || url.includes("/inscriptions")) {
+      setOpenSection("gestionEleves");
+    } else if (url.includes("/professeurs") || url.includes("/classes") || url.includes("/matieres") ||
+      url.includes("/cycles") || url.includes("/niveaux") || url.includes("/annees-scolaires") ||
+      url.includes("/trimestres") || url.includes("/transfert") || url.includes("/historique-transferts")) {
+      setOpenSection("organisation");
+    } else if (url.includes("/compositions") || url.includes("/notes") || url.includes("/bulletins")) {
+      setOpenSection("scolarite");
+    } else if (url.includes("/services") || url.includes("/factures") || url.includes("/paiements")) {
+      setOpenSection("finances");
+    } else if (url.includes("/buses") || url.includes("/itineraires-transports") ||
+      url.includes("/arrets") || url.includes("/affectations-transports")) {
+      setOpenSection("transport");
+    } else if (url.includes("/materiels") || url.includes("/inventaires-classes") ||
+      url.includes("/inventaires-enseignants")) {
+      setOpenSection("inventaire");
+    }
   }, [url]);
 
-  // ✅ Scroll vers le lien actif après navigation - CORRIGÉ
+  // ✅ Scroll vers le lien actif après navigation
   useEffect(() => {
     const timer = setTimeout(() => {
       const container = sidebarRef.current;
       if (!container) return;
-      
+
       const active = container.querySelector('[data-active="true"]');
       if (active) {
-        // Sauvegarder la position actuelle
         const currentScroll = container.scrollTop;
-        
-        // Scroll vers l'élément actif
         active.scrollIntoView({ block: "center", behavior: "smooth" });
-        
-        // Restaurer partiellement la position si le scroll est trop important
+
         setTimeout(() => {
           const newScroll = container.scrollTop;
           if (Math.abs(newScroll - currentScroll) > 300) {
@@ -138,75 +111,30 @@ const AppLayout = ({ children }) => {
   }, [url, sidebarOpen]);
 
   const toggleSection = useCallback((key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    setOpenSection(prev => prev === key ? "" : key);
   }, []);
 
-  // Helpers
+  // ✅ CORRECTION : Fonction isActiveLink réparée
   const isActiveLink = (path, exact = false) => {
     if (!url) return false;
     const cleanUrl = url.split('?')[0];
-    return exact ? cleanUrl === path : cleanUrl.startsWith(path);
+
+    if (exact) {
+      return cleanUrl === path;
+    }
+
+    // Pour les liens non-exacts, vérifier si l'URL commence par le chemin
+    return cleanUrl.startsWith(path);
   };
 
-  const FlashMessages = () => {
-    if (!flash) return null;
-    return (
-      <>
-        {flash?.success && (
-          <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4 animate-fade-in shadow-sm">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="h-5 w-5 text-green-600"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <p className="ml-3 text-sm font-medium text-green-800">
-                {flash.success}
-              </p>
-            </div>
-          </div>
-        )}
-        {flash?.error && (
-          <div className="mb-6 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-2xl p-4 animate-fade-in shadow-sm">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="h-5 w-5 text-red-600"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <p className="ml-3 text-sm font-medium text-red-800">
-                {flash.error}
-              </p>
-            </div>
-          </div>
-        )}
-      </>
-    );
-  };
+
 
   // Composant de lien de navigation
   const NavLink = ({ href, icon, children, exact = false }) => {
     const active = isActiveLink(href, exact);
-    
+
     const handleClick = () => {
       setSidebarOpen(false);
-      // Scroll vers le haut de la page principale
       window.scrollTo(0, 0);
     };
 
@@ -215,42 +143,39 @@ const AppLayout = ({ children }) => {
         <Link
           href={href}
           onClick={handleClick}
-          className={`group flex items-center justify-between px-3 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-            active
-              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/25"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
-          }`}
+          className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200
+  ${active
+              ? "bg-blue-100 text-blue-700 font-semibold border-l-4 border-blue-500 shadow-sm"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 hover:border-l-4 hover:border-blue-300"
+            }`}
+
         >
-          <div className="flex items-center">
-            <span className={`mr-3 transition-transform duration-200 ${
-              active ? "scale-110" : "group-hover:scale-105"
+          <span className={`mr-3 transition-transform duration-200 ${active ? "scale-110" : "group-hover:scale-105"
             }`}>
-              {icon}
-            </span>
-            {children}
-          </div>
+            {icon}
+          </span>
+          <span className="truncate">{children}</span>
         </Link>
       </div>
     );
   };
 
-  // Composant de section
-  const Section = ({ title, icon, openKey, children }) => (
-    <div className="mb-4">
+  // Composant de section avec accordéon
+  const Section = ({ title, icon, sectionKey, children }) => (
+    <div className="mb-2">
       <button
-        onClick={() => toggleSection(openKey)}
+        onClick={() => toggleSection(sectionKey)}
         className="flex items-center justify-between w-full px-3 py-3 text-sm font-semibold text-gray-700 rounded-xl hover:bg-gray-100/80 transition-colors duration-200"
       >
         <div className="flex items-center">
-          <span className="mr-3 text-gray-500">
+          <span className="mr-3 text-gray-500 text-lg">
             {icon}
           </span>
-          {title}
+          <span className="truncate">{title}</span>
         </div>
         <svg
-          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-            openSections[openKey] ? "rotate-180" : ""
-          }`}
+          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${openSection === sectionKey ? "rotate-180" : ""
+            }`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -258,67 +183,27 @@ const AppLayout = ({ children }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {openSections[openKey] && (
-        <div className="mt-2 ml-4 space-y-1 border-l-2 border-gray-200 pl-4">
+      {openSection === sectionKey && (
+        <div className="mt-1 ml-2 space-y-1 border-l-2 border-gray-200 pl-3">
           {children}
         </div>
       )}
     </div>
   );
 
-  // Icônes SVG pour une meilleure cohérence
+  // Icônes simplifiées (emojis pour gagner de l'espace)
   const Icons = {
-    Dashboard: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-    ),
-    Students: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-      </svg>
-    ),
-    Organization: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-      </svg>
-    ),
-    Education: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-      </svg>
-    ),
-    Finance: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    Transport: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-      </svg>
-    ),
-    Statistics: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
-    User: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-      </svg>
-    ),
-    Settings: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
-    Logout: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-      </svg>
-    )
+    Dashboard: "📊",
+    Students: "👨‍🎓",
+    Organization: "🏢",
+    Education: "📚",
+    Finance: "💰",
+    Transport: "🚌",
+    Inventory: "📦",
+    Statistics: "📈",
+    User: "👤",
+    Settings: "⚙️",
+    Logout: "🚪"
   };
 
   return (
@@ -331,60 +216,59 @@ const AppLayout = ({ children }) => {
         />
       )}
 
-      {/* SIDEBAR */}
+      {/* SIDEBAR RÉDUITE */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-80 bg-white/95 backdrop-blur-xl shadow-2xl border-r border-gray-200/50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50  bg-white/95 backdrop-blur-xl shadow-2xl border-r border-gray-200/50 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex flex-col h-full">
-          {/* Header Sidebar */}
+          {/* Header Sidebar compact */}
           <div className="flex-shrink-0">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200/50">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200/50">
               <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-lg">🏫</span>
+                <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                  <span className="text-white font-bold text-sm">🏫</span>
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">École Primaire</h1>
-                  <p className="text-xs text-gray-500">Gestion Scolaire</p>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-lg font-bold text-gray-900 truncate">École Primaire</h1>
+                  <p className="text-xs text-gray-500 truncate">Gestion Scolaire</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation compacte */}
           <div className="flex-1 min-h-0 overflow-hidden">
-            <div 
+            <div
               ref={sidebarRef}
               className="h-full overflow-y-auto custom-scrollbar"
             >
-              <nav className="p-4 space-y-2">
+              <nav className="p-3 space-y-1">
                 <NavLink href="/dashboard" exact icon={Icons.Dashboard}>
                   Tableau de bord
                 </NavLink>
 
-                <Section title="Gestion des Élèves" icon={Icons.Students} openKey="gestionEleves">
+                <Section title="Élèves" icon={Icons.Students} sectionKey="gestionEleves">
                   <NavLink href="/eleves" icon="👧">
-                    Liste des élèves
+                    Élèves
                   </NavLink>
                   <NavLink href="/parents" icon="👨‍👩‍👧">
-                    Parents d'élèves
+                    Parents
                   </NavLink>
                   <NavLink href="/inscriptions" icon="📝">
                     Inscriptions
                   </NavLink>
                 </Section>
 
-                <Section title="Organisation" icon={Icons.Organization} openKey="organisation">
+                <Section title="Organisation" icon={Icons.Organization} sectionKey="organisation">
                   <NavLink href="/professeurs" icon="👩‍🏫">
                     Professeurs
                   </NavLink>
@@ -401,14 +285,20 @@ const AppLayout = ({ children }) => {
                     Niveaux
                   </NavLink>
                   <NavLink href="/annees-scolaires" icon="🗓️">
-                    Années scolaires
+                    Années
                   </NavLink>
                   <NavLink href="/trimestres" icon="🕒">
                     Trimestres
                   </NavLink>
+                  <NavLink href="/transfert" icon="🔄">
+                    Transfert
+                  </NavLink>
+                  <NavLink href="/historique-transferts" icon="📋">
+                    Historique
+                  </NavLink>
                 </Section>
 
-                <Section title="Scolarité" icon={Icons.Education} openKey="scolarite">
+                <Section title="Scolarité" icon={Icons.Education} sectionKey="scolarite">
                   <NavLink href="/compositions" icon="🧾">
                     Compositions
                   </NavLink>
@@ -423,7 +313,7 @@ const AppLayout = ({ children }) => {
                   </NavLink>
                 </Section>
 
-                <Section title="Finances" icon={Icons.Finance} openKey="finances">
+                <Section title="Finances" icon={Icons.Finance} sectionKey="finances">
                   <NavLink href="/services" icon="🛠️">
                     Services
                   </NavLink>
@@ -435,7 +325,7 @@ const AppLayout = ({ children }) => {
                   </NavLink>
                 </Section>
 
-                <Section title="Transport" icon={Icons.Transport} openKey="transport">
+                <Section title="Transport" icon={Icons.Transport} sectionKey="transport">
                   <NavLink href="/buses" icon="🚍">
                     Bus
                   </NavLink>
@@ -450,6 +340,18 @@ const AppLayout = ({ children }) => {
                   </NavLink>
                 </Section>
 
+                <Section title="Inventaire" icon={Icons.Inventory} sectionKey="inventaire">
+                  <NavLink href="/materiels" icon="📦">
+                    Matériels
+                  </NavLink>
+                  <NavLink href="/inventaires-classes" icon="🏫">
+                    Classes
+                  </NavLink>
+                  <NavLink href="/inventaires-enseignants" icon="👨‍🏫">
+                    Enseignants
+                  </NavLink>
+                </Section>
+
                 <NavLink href="/statistiques" icon={Icons.Statistics}>
                   Statistiques
                 </NavLink>
@@ -457,34 +359,33 @@ const AppLayout = ({ children }) => {
             </div>
           </div>
 
-          {/* Profil utilisateur */}
-          <div className="flex-shrink-0 border-t border-gray-200/50 p-4">
+          {/* Profil utilisateur compact */}
+          <div className="flex-shrink-0 border-t border-gray-200/50 p-3">
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center w-full p-3 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors group"
+                className="flex items-center w-full p-2 rounded-xl bg-gray-50/80 hover:bg-gray-100/80 transition-colors group"
               >
                 <div className="flex-shrink-0">
-                  <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                    <span className="text-white font-bold text-sm">
+                  <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+                    <span className="text-white font-bold text-xs">
                       {auth?.user?.name?.charAt(0) || 'A'}
                     </span>
                   </div>
                 </div>
-                <div className="ml-3 text-left flex-1">
-                  <p className="text-sm font-medium text-gray-900">
-                    {auth?.user?.name || 'Administrateur'}
+                <div className="ml-2 text-left flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-900 truncate">
+                    {auth?.user?.name || 'Admin'}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {auth?.user?.role || 'Administrateur'}
+                  <p className="text-xs text-gray-500 truncate">
+                    {auth?.user?.role || 'Admin'}
                   </p>
                 </div>
-                <svg 
-                  className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-                    userMenuOpen ? 'rotate-180' : ''
-                  }`} 
-                  fill="none" 
-                  stroke="currentColor" 
+                <svg
+                  className={`h-3 w-3 text-gray-400 transition-transform duration-200 flex-shrink-0 ${userMenuOpen ? 'rotate-180' : ''
+                    }`}
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -492,42 +393,42 @@ const AppLayout = ({ children }) => {
               </button>
 
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-lg border border-gray-200/50 py-2 z-50">
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-xl shadow-lg border border-gray-200/50 py-1 z-50">
                   <Link
                     href="/profile"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => {
                       setUserMenuOpen(false);
                       setSidebarOpen(false);
                     }}
                   >
-                    {Icons.User}
-                    <span className="ml-3">Mon Profil</span>
+                    <span className="text-lg mr-2">{Icons.User}</span>
+                    <span className="text-xs">Mon Profil</span>
                   </Link>
                   <Link
                     href="/parametres"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     onClick={() => {
                       setUserMenuOpen(false);
                       setSidebarOpen(false);
                     }}
                   >
-                    {Icons.Settings}
-                    <span className="ml-3">Paramètres</span>
+                    <span className="text-lg mr-2">{Icons.Settings}</span>
+                    <span className="text-xs">Paramètres</span>
                   </Link>
                   <div className="border-t border-gray-200/50 my-1"></div>
                   <Link
                     href="/logout"
                     method="post"
                     as="button"
-                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     onClick={() => {
                       setUserMenuOpen(false);
                       setSidebarOpen(false);
                     }}
                   >
-                    {Icons.Logout}
-                    <span className="ml-3">Déconnexion</span>
+                    <span className="text-lg mr-2">{Icons.Logout}</span>
+                    <span className="text-xs">Déconnexion</span>
                   </Link>
                 </div>
               )}
@@ -540,44 +441,44 @@ const AppLayout = ({ children }) => {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
         <header className="flex-shrink-0 bg-white/80 backdrop-blur-xl border-b border-gray-200/50">
-          <div className="flex items-center justify-between px-4 lg:px-8 py-4">
+          <div className="flex items-center justify-between px-4 lg:px-6 py-3">
             <div className="flex items-center">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors mr-4"
+                className="lg:hidden p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors mr-3"
               >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   {getPageTitle(url)}
                 </h1>
-                <p className="text-sm text-gray-500 hidden sm:block">
+                <p className="text-xs text-gray-500 hidden sm:block">
                   Bienvenue, {auth?.user?.name || "Administrateur"}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {/* Notifications */}
-              <button className="relative p-2 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button className="relative p-1.5 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM10.5 3.75a6 6 0 0 0-6 6v2.25l-2.47 2.47a.75.75 0 0 0 .53 1.28h15.88a.75.75 0 0 0 .53-1.28L16.5 12V9.75a6 6 0 0 0-6-6z" />
                 </svg>
-                <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+                <span className="absolute top-1 right-1 h-1.5 w-1.5 bg-red-500 rounded-full"></span>
               </button>
 
-              {/* Quick Stats */}
-              <div className="hidden md:flex items-center space-x-6 text-sm">
+              {/* Quick Stats compactes */}
+              <div className="hidden md:flex items-center space-x-4 text-xs">
                 <div className="text-center">
                   <div className="font-semibold text-gray-900">1,248</div>
                   <div className="text-gray-500">Élèves</div>
                 </div>
                 <div className="text-center">
                   <div className="font-semibold text-gray-900">64</div>
-                  <div className="text-gray-500">Professeurs</div>
+                  <div className="text-gray-500">Profs</div>
                 </div>
                 <div className="text-center">
                   <div className="font-semibold text-gray-900">24</div>
@@ -590,11 +491,63 @@ const AppLayout = ({ children }) => {
 
         {/* Page Content */}
         <main className="flex-1 min-h-0 overflow-auto custom-scrollbar">
-          <div className="p-4 lg:p-8 fade-in">
-            <FlashMessages />
+          <div className="p-4 lg:p-6 fade-in">
             {children}
           </div>
         </main>
+        {/* Conteneur des toasts */}
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{
+            duration: 4200,
+            className: "shadow-xl border border-gray-100 backdrop-blur-md font-medium",
+            style: {
+              background: "rgba(255,255,255,0.95)",
+              color: "#1F2937",
+              borderRadius: "14px",
+              padding: "14px 18px",
+              fontSize: "0.95rem",
+              lineHeight: 1.4,
+              boxShadow: "0 6px 20px rgba(0,0,0,0.08)",
+              animation: "toastSlideIn 0.35s ease, toastFadeOut 0.4s ease 3.8s forwards",
+            },
+            success: {
+              icon: "✅",
+              style: {
+                borderLeft: "5px solid #10B981",
+                background: "linear-gradient(to right, #ECFDF5, #D1FAE5)",
+              },
+            },
+            error: {
+              icon: "❌",
+              style: {
+                borderLeft: "5px solid #EF4444",
+                background: "linear-gradient(to right, #FEF2F2, #FEE2E2)",
+              },
+            },
+            warning: {
+              icon: "⚠️",
+              style: {
+                borderLeft: "5px solid #F59E0B",
+                background: "linear-gradient(to right, #FFFBEB, #FEF3C7)",
+              },
+            },
+            info: {
+              icon: "ℹ️",
+              style: {
+                borderLeft: "5px solid #3B82F6",
+                background: "linear-gradient(to right, #EFF6FF, #DBEAFE)",
+              },
+            },
+          }}
+          containerStyle={{
+            top: 16,
+            right: 16,
+          }}
+        />
+
+
       </div>
 
       {/* Styles */}
@@ -623,15 +576,15 @@ const AppLayout = ({ children }) => {
           scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
         }
         .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+          width: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
-          border-radius: 3px;
+          border-radius: 2px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background-color: rgba(156, 163, 175, 0.5);
-          border-radius: 3px;
+          border-radius: 2px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background-color: rgba(156, 163, 175, 0.7);
@@ -641,47 +594,49 @@ const AppLayout = ({ children }) => {
   );
 };
 
-// 🧭 Titre de page selon l'URL - CORRIGÉ
+// Titre de page selon l'URL
 const getPageTitle = (url) => {
   if (!url) return "Tableau de Bord";
-  
+
   const pages = {
     "/dashboard": "Tableau de Bord",
-    "/eleves": "Gestion des Élèves",
-    "/parents": "Parents d'Élèves",
+    "/eleves": "Élèves",
+    "/parents": "Parents",
     "/inscriptions": "Inscriptions",
-    "/professeurs": "Gestion des Professeurs",
-    "/classes": "Gestion des Classes",
-    "/matieres": "Gestion des Matières",
-    "/cycles": "Gestion des Cycles",
-    "/niveaux": "Gestion des Niveaux",
+    "/professeurs": "Professeurs",
+    "/classes": "Classes",
+    "/matieres": "Matières",
+    "/cycles": "Cycles",
+    "/niveaux": "Niveaux",
     "/annees-scolaires": "Années Scolaires",
-    "/trimestres": "Gestion des Trimestres",
+    "/trimestres": "Trimestres",
+    "/transfert": "Transfert d'Année",
+    "/historique-transferts": "Historique Transferts",
     "/compositions": "Compositions",
-    "/notes": "Gestion des Notes",
-    "/notes/multiple/create": "Saisie Groupée des Notes",
-    "/bulletins": "Bulletins Scolaires",
-    "/services": "Services et Tarifs",
-    "/factures": "Gestion des Factures",
+    "/notes": "Notes",
+    "/notes/multiple/create": "Saisie Groupée",
+    "/bulletins": "Bulletins",
+    "/services": "Services",
+    "/factures": "Factures",
     "/paiements": "Paiements",
-    "/buses": "Gestion des Bus", // ✅ Correction ici
-    "/itineraires-transports": "Itinéraires de Transport",
-    "/arrets": "Arrêts de Bus",
-    "/affectations-transports": "Affectations de Transport", // ✅ Correction ici
-    "/statistiques": "Statistiques et Rapports",
+    "/buses": "Bus",
+    "/itineraires-transports": "Itinéraires",
+    "/arrets": "Arrêts",
+    "/affectations-transports": "Affectations Transport",
+    "/materiels": "Matériels",
+    "/inventaires-classes": "Inventaire Classes",
+    "/inventaires-enseignants": "Inventaire Enseignants",
+    "/statistiques": "Statistiques",
     "/profile": "Mon Profil",
     "/parametres": "Paramètres",
   };
 
-  // Nettoyer l'URL des paramètres
   const cleanUrl = url.split('?')[0];
-  
-  // Vérifier d'abord les correspondances exactes
+
   if (pages[cleanUrl]) {
     return pages[cleanUrl];
   }
-  
-  // Ensuite vérifier les correspondances par préfixe
+
   for (const [path, title] of Object.entries(pages)) {
     if (cleanUrl.startsWith(path)) {
       return title;

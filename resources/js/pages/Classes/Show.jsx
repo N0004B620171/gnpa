@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Head, Link, router, usePage, useForm } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 
-const Show = ({ classe, eleves, factures, serviceCiblages, services, affectationsTransport, busUtilises, itineraires, anneesScolaires }) => {
+const Show = ({ classe, eleves, factures, serviceCiblages, services, affectationsTransport, busUtilises, itineraires, anneesScolaires, inventaires }) => {
     const { flash } = usePage().props;
     const [activeTab, setActiveTab] = useState('informations');
     const [showServiceModal, setShowServiceModal] = useState(false);
     const [showExcelModal, setShowExcelModal] = useState(false);
+    const [showGenererFacturesModal, setShowGenererFacturesModal] = useState(false);
 
     const { data: serviceData, setData: setServiceData, post: postService, processing: serviceProcessing, reset: resetService } = useForm({
         service_id: ''
@@ -18,8 +19,13 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
         creer_parents: true
     });
 
+    const { data: factureData, setData: setFactureData, post: postFacture, processing: factureProcessing } = useForm({
+        mois: new Date().getMonth() + 1,
+        annee: new Date().getFullYear(),
+        annee_scolaire_id: ''
+    });
+
     const telechargerModeleExcel = () => {
-        // Créer un lien de téléchargement
         const link = document.createElement('a');
         link.href = '/api/telecharger-modele-excel';
         link.download = 'modele_import_eleves.xlsx';
@@ -29,7 +35,7 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
     };
 
     const handleDelete = () => {
-        if (confirm(`Êtes-vous sûr de vouloir supprimer la classe "${classe.nom}" ?`)) {
+        if (confirm(`Êtes-vous sûr de vouloir supprimer la classe "${classe.nom}" ? Cette action est irréversible.`)) {
             router.delete(`/classes/${classe.id}`);
         }
     };
@@ -93,7 +99,23 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
             onSuccess: () => {
                 resetExcel();
                 setShowExcelModal(false);
-            }
+            },
+            preserveScroll: true
+        });
+    };
+
+    const handleGenererFactures = (e) => {
+        e.preventDefault();
+        postFacture(`/classes/${classe.id}/generer-factures`, {
+            onSuccess: () => {
+                setShowGenererFacturesModal(false);
+                setFactureData({
+                    mois: new Date().getMonth() + 1,
+                    annee: new Date().getFullYear(),
+                    annee_scolaire_id: ''
+                });
+            },
+            preserveScroll: true
         });
     };
 
@@ -154,6 +176,15 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
         }
     };
 
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        try {
+            return new Date(dateString).toLocaleDateString('fr-FR');
+        } catch (error) {
+            return 'Date invalide';
+        }
+    };
+
     // Calcul de l'âge moyen des élèves
     const calculerAgeMoyen = () => {
         if (!eleves?.length) return 0;
@@ -176,6 +207,9 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
     };
 
     const ageMoyen = calculerAgeMoyen();
+
+    // Obtenir l'année scolaire active par défaut
+    const anneeScolaireActive = anneesScolaires?.find(a => a.actif) || anneesScolaires?.[0];
 
     return (
         <AppLayout>
@@ -233,6 +267,14 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                     <div className={`flex items-center px-3 py-1 rounded-full text-xs font-medium border-2 ${getEffectifColor(effectif, capacite)}`}>
                                         {tauxRemplissage}% de remplissage
                                     </div>
+                                    {classe?.professeur && (
+                                        <div className="flex items-center">
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            Prof: {classe.professeur.prenom} {classe.professeur.nom}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -264,15 +306,6 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                 </svg>
                                 Modifier
                             </Link>
-                            <button
-                                onClick={handleDelete}
-                                className="inline-flex items-center gap-3 px-6 py-3 bg-red-500/20 backdrop-blur-sm border border-red-300/30 rounded-xl text-white hover:bg-red-500/30 transition-all duration-200 transform hover:scale-105"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Supprimer
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -281,66 +314,65 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden mb-8">
                     <div className="border-b border-gray-200">
                         <nav className="flex -mb-px overflow-x-auto">
-                            <button
-                                onClick={() => setActiveTab('informations')}
-                                className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'informations'
+                            {['informations', 'eleves', 'factures', 'services', 'transport', 'inventaire'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === tab
                                         ? 'border-b-2 border-emerald-500 text-emerald-600 bg-emerald-50'
                                         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Informations
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('eleves')}
-                                className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'eleves'
-                                        ? 'border-b-2 border-emerald-500 text-emerald-600 bg-emerald-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                                </svg>
-                                Élèves ({effectif})
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('factures')}
-                                className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'factures'
-                                        ? 'border-b-2 border-emerald-500 text-emerald-600 bg-emerald-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5 5.5h.01m2.49 6v-2.5m0 2.5h-2.5m2.5 0h2.5m-10-6h.01M15 13.5h.01M12 12h.01M9 10.5h.01M9.5 15h.01m5.49 2.5h.01M15 12h.01m-5 0h.01M9 7.5h.01M12 21a9 9 0 100-18 9 9 0 000 18z" />
-                                </svg>
-                                Factures ({facturesStats.total})
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('services')}
-                                className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'services'
-                                        ? 'border-b-2 border-emerald-500 text-emerald-600 bg-emerald-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                </svg>
-                                Services ({serviceCiblages?.length || 0})
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('transport')}
-                                className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'transport'
-                                        ? 'border-b-2 border-emerald-500 text-emerald-600 bg-emerald-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                    }`}
-                            >
-                                <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                Transport
-                            </button>
+                                        }`}
+                                >
+                                    {tab === 'informations' && (
+                                        <>
+                                            <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Informations
+                                        </>
+                                    )}
+                                    {tab === 'eleves' && (
+                                        <>
+                                            <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                            </svg>
+                                            Élèves ({effectif})
+                                        </>
+                                    )}
+                                    {tab === 'factures' && (
+                                        <>
+                                            <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5 5.5h.01m2.49 6v-2.5m0 2.5h-2.5m2.5 0h2.5m-10-6h.01M15 13.5h.01M12 12h.01M9 10.5h.01M9.5 15h.01m5.49 2.5h.01M15 12h.01m-5 0h.01M9 7.5h.01M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                                            </svg>
+                                            Factures ({facturesStats.total})
+                                        </>
+                                    )}
+                                    {tab === 'services' && (
+                                        <>
+                                            <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                            </svg>
+                                            Services ({serviceCiblages?.length || 0})
+                                        </>
+                                    )}
+                                    {tab === 'transport' && (
+                                        <>
+                                            <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            Transport
+                                        </>
+                                    )}
+                                    {tab === 'inventaire' && (
+                                        <>
+                                            <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                            </svg>
+                                            Inventaire ({inventaires?.length || 0})
+                                        </>
+                                    )}
+                                </button>
+                            ))}
                         </nav>
                     </div>
 
@@ -381,8 +413,8 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                                 <div className="flex justify-between items-center mb-2">
                                                     <span className="font-medium text-blue-700">Taux de remplissage :</span>
                                                     <span className={`font-bold ${tauxRemplissage >= 90 ? 'text-red-600' :
-                                                            tauxRemplissage >= 75 ? 'text-orange-600' :
-                                                                tauxRemplissage >= 50 ? 'text-green-600' : 'text-blue-600'
+                                                        tauxRemplissage >= 75 ? 'text-orange-600' :
+                                                            tauxRemplissage >= 50 ? 'text-green-600' : 'text-blue-600'
                                                         }`}>
                                                         {tauxRemplissage}%
                                                     </span>
@@ -390,8 +422,8 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                                 <div className="w-full bg-gray-200 rounded-full h-3">
                                                     <div
                                                         className={`h-3 rounded-full transition-all duration-500 ${tauxRemplissage >= 90 ? 'bg-red-500' :
-                                                                tauxRemplissage >= 75 ? 'bg-orange-500' :
-                                                                    tauxRemplissage >= 50 ? 'bg-green-500' : 'bg-blue-500'
+                                                            tauxRemplissage >= 75 ? 'bg-orange-500' :
+                                                                tauxRemplissage >= 50 ? 'bg-green-500' : 'bg-blue-500'
                                                             }`}
                                                         style={{ width: `${tauxRemplissage}%` }}
                                                     ></div>
@@ -535,15 +567,6 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                             </svg>
                                             Importer Excel
                                         </button>
-                                        <Link
-                                            href={`/classes/${classe?.id}/emploi-du-temps`}
-                                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            Emploi du temps
-                                        </Link>
                                     </div>
                                 </div>
 
@@ -586,8 +609,8 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                                                 </td>
                                                                 <td className="px-6 py-4">
                                                                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${eleve.sexe === 'M'
-                                                                            ? 'bg-blue-100 text-blue-800'
-                                                                            : 'bg-pink-100 text-pink-800'
+                                                                        ? 'bg-blue-100 text-blue-800'
+                                                                        : 'bg-pink-100 text-pink-800'
                                                                         }`}>
                                                                         {eleve.sexe === 'M' ? 'Garçon' : 'Fille'}
                                                                     </span>
@@ -689,7 +712,29 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                         {/* Onglet Factures */}
                         {activeTab === 'factures' && (
                             <div className="space-y-6">
-                                <h3 className="text-lg font-semibold text-gray-900">Factures de la Classe</h3>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                    <h3 className="text-lg font-semibold text-gray-900">Factures de la Classe</h3>
+                                    <div className="flex gap-3 mt-4 sm:mt-0">
+                                        <button
+                                            onClick={() => setShowGenererFacturesModal(true)}
+                                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            Générer Factures
+                                        </button>
+                                        <Link
+                                            href={`/classes/${classe.id}/factures`}
+                                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Voir toutes
+                                        </Link>
+                                    </div>
+                                </div>
 
                                 {/* Statistiques financières */}
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -843,6 +888,15 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 14l6-6m-5.5 5.5h.01m2.49 6v-2.5m0 2.5h-2.5m2.5 0h2.5m-10-6h.01M15 13.5h.01M12 12h.01M9 10.5h.01M9.5 15h.01m5.49 2.5h.01M15 12h.01m-5 0h.01M9 7.5h.01M12 21a9 9 0 100-18 9 9 0 000 18z" />
                                         </svg>
                                         <p className="text-gray-500">Aucune facture trouvée pour cette classe</p>
+                                        <button
+                                            onClick={() => setShowGenererFacturesModal(true)}
+                                            className="mt-4 inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            Générer les premières factures
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -964,10 +1018,10 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                                             </p>
                                                         </div>
                                                         <div className={`px-3 py-1 rounded-full text-xs font-medium ${bus.etat === 'actif'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : bus.etat === 'maintenance'
-                                                                    ? 'bg-orange-100 text-orange-800'
-                                                                    : 'bg-red-100 text-red-800'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : bus.etat === 'maintenance'
+                                                                ? 'bg-orange-100 text-orange-800'
+                                                                : 'bg-red-100 text-red-800'
                                                             }`}>
                                                             {bus.etat === 'actif' ? 'Actif' :
                                                                 bus.etat === 'maintenance' ? 'Maintenance' : 'Hors service'}
@@ -1024,6 +1078,159 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Onglet Inventaire */}
+                        {activeTab === 'inventaire' && (
+                            <div className="space-y-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                    <h3 className="text-lg font-semibold text-gray-900">
+                                        Inventaire de la Classe ({inventaires?.length || 0})
+                                    </h3>
+                                    <Link
+                                        href={`/inventaires-classes/create?classe_id=${classe.id}`}
+                                        className="mt-4 sm:mt-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        </svg>
+                                        Ajouter du Matériel
+                                    </Link>
+                                </div>
+
+                                {/* Statistiques inventaire */}
+                                {inventaires && inventaires.length > 0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-200 text-center">
+                                            <div className="text-2xl font-bold text-blue-600">
+                                                {inventaires.reduce((sum, inv) => sum + inv.quantite, 0)}
+                                            </div>
+                                            <div className="text-sm text-blue-700">Total matériels</div>
+                                        </div>
+                                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200 text-center">
+                                            <div className="text-2xl font-bold text-green-600">
+                                                {inventaires.filter(inv => inv.etat === 'bon').length}
+                                            </div>
+                                            <div className="text-sm text-green-700">En bon état</div>
+                                        </div>
+                                        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-200 text-center">
+                                            <div className="text-2xl font-bold text-orange-600">
+                                                {inventaires.filter(inv => inv.etat !== 'bon').length}
+                                            </div>
+                                            <div className="text-sm text-orange-700">À réparer/remplacer</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Liste de l'inventaire */}
+                                {inventaires && inventaires.length > 0 ? (
+                                    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead>
+                                                    <tr className="bg-gray-50 border-b border-gray-200">
+                                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Matériel</th>
+                                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Quantité</th>
+                                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">État</th>
+                                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Date d'ajout</th>
+                                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Observation</th>
+                                                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-200">
+                                                    {inventaires.map((inventaire) => (
+                                                        <tr key={inventaire.id} className="hover:bg-gray-50 transition-colors">
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center">
+                                                                    <div className="flex-shrink-0 h-10 w-10 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl flex items-center justify-center">
+                                                                        <span className="text-purple-600 font-bold">
+                                                                            {inventaire.materiel?.nom?.[0] || 'M'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="ml-4">
+                                                                        <div className="text-sm font-medium text-gray-900">
+                                                                            {inventaire.materiel?.nom || 'Matériel inconnu'}
+                                                                        </div>
+                                                                        {inventaire.materiel?.reference && (
+                                                                            <div className="text-xs text-gray-500">
+                                                                                Ref: {inventaire.materiel.reference}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                                                    {inventaire.quantite}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${inventaire.etat === 'bon'
+                                                                    ? 'bg-green-100 text-green-800'
+                                                                    : inventaire.etat === 'endommagé'
+                                                                        ? 'bg-orange-100 text-orange-800'
+                                                                        : 'bg-red-100 text-red-800'
+                                                                    }`}>
+                                                                    {inventaire.etat === 'bon' ? 'Bon' :
+                                                                        inventaire.etat === 'endommagé' ? 'Endommagé' : 'Perdu'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                                {formatDate(inventaire.date_ajout)}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                                {inventaire.observation || '-'}
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex space-x-2">
+                                                                    <Link
+                                                                        href={`/inventaires-classes/${inventaire.id}/edit`}
+                                                                        className="inline-flex items-center p-1 text-green-600 hover:text-green-800 transition-colors"
+                                                                        title="Modifier"
+                                                                    >
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                        </svg>
+                                                                    </Link>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (confirm('Êtes-vous sûr de vouloir supprimer ce matériel de l\'inventaire ?')) {
+                                                                                router.delete(`/inventaires-classes/${inventaire.id}`);
+                                                                            }
+                                                                        }}
+                                                                        className="inline-flex items-center p-1 text-red-600 hover:text-red-800 transition-colors"
+                                                                        title="Supprimer"
+                                                                    >
+                                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12 bg-gray-50 rounded-2xl">
+                                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                        </svg>
+                                        <p className="text-gray-500">Aucun matériel dans l'inventaire de cette classe</p>
+                                        <Link
+                                            href={`/inventaires-classes/create?classe_id=${classe.id}`}
+                                            className="mt-4 inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            Ajouter du matériel
+                                        </Link>
                                     </div>
                                 )}
                             </div>
@@ -1091,116 +1298,226 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
                 </div>
             )}
 
-          {/* Modal d'import Excel - Version simplifiée */}
-{showExcelModal && (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto">
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-700 p-4 text-white rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-bold">Importer des Élèves</h2>
-                    <button
-                        onClick={() => setShowExcelModal(false)}
-                        className="text-white hover:text-blue-200 transition-colors"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div className="p-4 max-h-[60vh] overflow-y-auto">
-                <form onSubmit={handleExcelUpload} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Fichier Excel *
-                        </label>
-                        <input
-                            type="file"
-                            accept=".xlsx,.xls,.csv"
-                            onChange={handleFileChange}
-                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-                            required
-                        />
-                        {excelErrors.fichier_excel && (
-                            <p className="text-red-600 text-xs mt-1">{excelErrors.fichier_excel}</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Année Scolaire *
-                        </label>
-                        <select
-                            value={excelData.annee_scolaire_id}
-                            onChange={(e) => setExcelData('annee_scolaire_id', e.target.value)}
-                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
-                            required
-                        >
-                            <option value="">Sélectionnez une année</option>
-                            {anneesScolaires && anneesScolaires.map((annee) => (
-                                <option key={annee.id} value={annee.id}>
-                                    {annee.nom}
-                                </option>
-                            ))}
-                        </select>
-                        {excelErrors.annee_scolaire_id && (
-                            <p className="text-red-600 text-xs mt-1">{excelErrors.annee_scolaire_id}</p>
-                        )}
-                    </div>
-
-                    <div className="flex items-center">
-                        <input
-                            type="checkbox"
-                            checked={excelData.creer_parents}
-                            onChange={(e) => setExcelData('creer_parents', e.target.checked)}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label className="ml-2 block text-sm text-gray-700">
-                            Créer les parents automatiquement
-                        </label>
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-semibold text-blue-800">Modèle</span>
-                            <button
-                                type="button"
-                                onClick={telechargerModeleExcel}
-                                className="text-xs text-blue-600 hover:text-blue-800 underline"
-                            >
-                                Télécharger
-                            </button>
+            {/* Modal d'import Excel */}
+            {showExcelModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto">
+                        <div className="bg-gradient-to-r from-blue-600 to-cyan-700 p-4 text-white rounded-t-2xl">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold">Importer des Élèves</h2>
+                                <button
+                                    onClick={() => setShowExcelModal(false)}
+                                    className="text-white hover:text-blue-200 transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
-                        <p className="text-xs text-blue-700">
-                            Colonnes: Prénom, Nom, Date naissance, Sexe, Prénom parent, Nom parent, Email, Téléphone
-                        </p>
-                    </div>
-                </form>
-            </div>
 
-            <div className="p-4 border-t border-gray-200">
-                <div className="flex gap-3">
-                    <button
-                        type="button"
-                        onClick={() => setShowExcelModal(false)}
-                        className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                    >
-                        Annuler
-                    </button>
-                    <button
-                        type="submit"
-                        onClick={handleExcelUpload}
-                        disabled={excelProcessing || !excelData.fichier_excel || !excelData.annee_scolaire_id}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                    >
-                        {excelProcessing ? 'Import...' : 'Importer'}
-                    </button>
+                        <div className="p-4 max-h-[60vh] overflow-y-auto">
+                            <form onSubmit={handleExcelUpload} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Fichier Excel *
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept=".xlsx,.xls,.csv"
+                                        onChange={handleFileChange}
+                                        className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                                        required
+                                    />
+                                    {excelErrors.fichier_excel && (
+                                        <p className="text-red-600 text-xs mt-1">{excelErrors.fichier_excel}</p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Année Scolaire *
+                                    </label>
+                                    <select
+                                        value={excelData.annee_scolaire_id}
+                                        onChange={(e) => setExcelData('annee_scolaire_id', e.target.value)}
+                                        className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200"
+                                        required
+                                    >
+                                        <option value="">Sélectionnez une année</option>
+                                        {anneesScolaires && anneesScolaires.map((annee) => (
+                                            <option key={annee.id} value={annee.id}>
+                                                {annee.nom}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {excelErrors.annee_scolaire_id && (
+                                        <p className="text-red-600 text-xs mt-1">{excelErrors.annee_scolaire_id}</p>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={excelData.creer_parents}
+                                        onChange={(e) => setExcelData('creer_parents', e.target.checked)}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                    <label className="ml-2 block text-sm text-gray-700">
+                                        Créer les parents automatiquement
+                                    </label>
+                                </div>
+
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-semibold text-blue-800">Modèle</span>
+                                        <button
+                                            type="button"
+                                            onClick={telechargerModeleExcel}
+                                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                        >
+                                            Télécharger
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-blue-700">
+                                        Colonnes: Prénom, Nom, Date naissance, Sexe, Prénom parent, Nom parent, Email, Téléphone
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-200">
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowExcelModal(false)}
+                                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    onClick={handleExcelUpload}
+                                    disabled={excelProcessing || !excelData.fichier_excel || !excelData.annee_scolaire_id}
+                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {excelProcessing ? 'Import...' : 'Importer'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
-)}
+            )}
+
+            {/* Modal de génération de factures */}
+            {showGenererFacturesModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto">
+                        <div className="bg-gradient-to-r from-emerald-600 to-green-700 p-4 text-white rounded-t-2xl">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-bold">Générer les Factures</h2>
+                                <button
+                                    onClick={() => setShowGenererFacturesModal(false)}
+                                    className="text-white hover:text-emerald-200 transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-4">
+                            <form onSubmit={handleGenererFactures} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Mois *
+                                    </label>
+                                    <select
+                                        value={factureData.mois}
+                                        onChange={(e) => setFactureData('mois', parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
+                                        required
+                                    >
+                                        <option value="1">Janvier</option>
+                                        <option value="2">Février</option>
+                                        <option value="3">Mars</option>
+                                        <option value="4">Avril</option>
+                                        <option value="5">Mai</option>
+                                        <option value="6">Juin</option>
+                                        <option value="7">Juillet</option>
+                                        <option value="8">Août</option>
+                                        <option value="9">Septembre</option>
+                                        <option value="10">Octobre</option>
+                                        <option value="11">Novembre</option>
+                                        <option value="12">Décembre</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Année *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={factureData.annee}
+                                        onChange={(e) => setFactureData('annee', parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
+                                        required
+                                        min="2020"
+                                        max="2030"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Année Scolaire *
+                                    </label>
+                                    <select
+                                        value={factureData.annee_scolaire_id}
+                                        onChange={(e) => setFactureData('annee_scolaire_id', e.target.value)}
+                                        className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-200"
+                                        required
+                                    >
+                                        <option value="">Sélectionnez une année</option>
+                                        {anneesScolaires && anneesScolaires.map((annee) => (
+                                            <option key={annee.id} value={annee.id}>
+                                                {annee.nom}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                                    <p className="text-sm text-emerald-700">
+                                        Cette action générera des factures pour tous les élèves de la classe {classe.nom} ({effectif} élève{effectif > 1 ? 's' : ''}).
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-200">
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowGenererFacturesModal(false)}
+                                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    onClick={handleGenererFactures}
+                                    disabled={factureProcessing || !factureData.annee_scolaire_id}
+                                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                                >
+                                    {factureProcessing ? 'Génération...' : 'Générer'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AppLayout>
     );
 };

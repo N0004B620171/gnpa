@@ -32,6 +32,11 @@ class Professeur extends Model
 
     public function matieres()
     {
-        return $this->hasMany(Matiere::class); 
+        return $this->hasMany(Matiere::class);
+    }
+
+    public function inventaireEnseignants()
+    {
+        return $this->hasMany(InventaireEnseignant::class);
     }
 }

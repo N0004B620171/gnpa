@@ -4,526 +4,388 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
     public function run()
     {
-        // Désactiver les contraintes de clés étrangères
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        // Désactiver les contraintes de clés étrangères temporairement
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
         // Vider les tables
-        $this->truncateTables();
-
-        // Peupler les tables
-        $this->seedCycles();
-        $this->seedNiveaux();
-        $this->seedParentEleves();
-        $this->seedProfesseurs();
-        $this->seedClasses();
-        $this->seedEleves();
-        $this->seedAnneeScolaires();
-        $this->seedTrimestres();
-        $this->seedMatieres();
-        $this->seedInscriptions();
-        $this->seedCompositions();
-        $this->seedCompositionMatieres();
-        $this->seedNotes();
-        $this->seedBulletins();
-        $this->seedBulletinDetails();
-
-        // Réactiver les contraintes
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
-    }
-
-    private function truncateTables()
-    {
         $tables = [
-            'bulletin_details',
-            'bulletins',
-            'notes',
-            'composition_matieres',
-            'compositions',
-            'matieres',
-            'inscriptions',
-            'trimestres',
-            'annee_scolaires',
-            'eleves',
-            'classes',
-            'professeurs',
-            'parent_eleves',
+            'users',
+            'cycles',
             'niveaux',
-            'cycles'
+            'parent_eleves',
+            'professeurs',
+            'classes',
+            'eleves',
+            'annee_scolaires',
+            'trimestres',
+            'inscriptions',
+            'matieres',
+            'compositions',
+            'notes',
+            'bulletins',
+            'bulletin_details',
+            'langues',
+            'cycle_langue',
+            'services',
+            'service_ciblages',
+            'factures',
+            'facture_details',
+            'paiements',
+            'buses',
+            'itineraire_transports',
+            'arrets',
+            'affectation_transports',
+            'materiels',
+            'inventaire_classes',
+            'inventaire_enseignants',
+            'historique_transferts',
+            'transferts_annees'
         ];
 
         foreach ($tables as $table) {
             DB::table($table)->truncate();
         }
-    }
 
-    private function seedCycles()
-    {
+        // 1. Langues
+        $langues = [
+            ['uid' => Str::uuid(), 'code' => 'FR', 'nom' => 'Français'],
+            ['uid' => Str::uuid(), 'code' => 'EN', 'nom' => 'Anglais'],
+            ['uid' => Str::uuid(), 'code' => 'AR', 'nom' => 'Arabe'],
+            ['uid' => Str::uuid(), 'code' => 'ES', 'nom' => 'Espagnol'],
+        ];
+        DB::table('langues')->insert($langues);
+
+        // 2. Cycles
         $cycles = [
-            ['nom' => 'Cycle Primaire'],
-            ['nom' => 'Cycle Secondaire'],
-            ['nom' => 'Cycle Secondaire Technique'],
+            ['uid' => Str::uuid(), 'nom' => 'Primaire', 'bareme' => 10.00, 'nombre_trimestres' => 3, 'systeme' => 'standard'],
+            ['uid' => Str::uuid(), 'nom' => 'Collège', 'bareme' => 20.00, 'nombre_trimestres' => 3, 'systeme' => 'standard'],
+            ['uid' => Str::uuid(), 'nom' => 'Lycée', 'bareme' => 20.00, 'nombre_trimestres' => 3, 'systeme' => 'standard'],
         ];
+        DB::table('cycles')->insert($cycles);
 
-        foreach ($cycles as $cycle) {
-            DB::table('cycles')->insert([
-                'uid' => Str::uuid(),
-                'nom' => $cycle['nom'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
+        // 3. Cycle_Langue (association cycles et langues)
+        $cycleLangues = [
+            ['cycle_id' => 1, 'langue_id' => 1], // Primaire - Français
+            ['cycle_id' => 1, 'langue_id' => 2], // Primaire - Anglais
+            ['cycle_id' => 2, 'langue_id' => 1], // Collège - Français
+            ['cycle_id' => 2, 'langue_id' => 2], // Collège - Anglais
+            ['cycle_id' => 3, 'langue_id' => 1], // Lycée - Français
+            ['cycle_id' => 3, 'langue_id' => 2], // Lycée - Anglais
+        ];
+        DB::table('cycle_langue')->insert($cycleLangues);
 
-    private function seedNiveaux()
-    {
-        $cycles = DB::table('cycles')->get();
-        
+        // 4. Niveaux
         $niveaux = [
-            // Cycle Primaire
-            ['cycle_id' => $cycles[0]->id, 'nom' => 'CP', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[0]->id, 'nom' => 'CP', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[0]->id, 'nom' => 'CE', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[0]->id, 'nom' => 'CE', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[0]->id, 'nom' => 'CM', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[0]->id, 'nom' => 'CM', 'moyenne_min_pour_passage' => 10],
-            
-            // Cycle Secondaire
-            ['cycle_id' => $cycles[1]->id, 'nom' => '6ème', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[1]->id, 'nom' => '5ème', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[1]->id, 'nom' => '4ème', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[1]->id, 'nom' => '3ème', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[1]->id, 'nom' => '2nde', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[1]->id, 'nom' => '1ère', 'moyenne_min_pour_passage' => 10],
-            ['cycle_id' => $cycles[1]->id, 'nom' => 'Tle', 'moyenne_min_pour_passage' => 10],
+            // Primaire
+            ['uid' => Str::uuid(), 'cycle_id' => 1, 'nom' => 'CI', 'moyenne_min_pour_passage' => 5.0],
+            ['uid' => Str::uuid(), 'cycle_id' => 1, 'nom' => 'CP', 'moyenne_min_pour_passage' => 5.0],
+            ['uid' => Str::uuid(), 'cycle_id' => 1, 'nom' => 'CE1', 'moyenne_min_pour_passage' => 5.5],
+            ['uid' => Str::uuid(), 'cycle_id' => 1, 'nom' => 'CE2', 'moyenne_min_pour_passage' => 5.5],
+            ['uid' => Str::uuid(), 'cycle_id' => 1, 'nom' => 'CM1', 'moyenne_min_pour_passage' => 6.0],
+            ['uid' => Str::uuid(), 'cycle_id' => 1, 'nom' => 'CM2', 'moyenne_min_pour_passage' => 6.0],
+
+            // Collège
+            ['uid' => Str::uuid(), 'cycle_id' => 2, 'nom' => '6ème', 'moyenne_min_pour_passage' => 10.0],
+            ['uid' => Str::uuid(), 'cycle_id' => 2, 'nom' => '5ème', 'moyenne_min_pour_passage' => 10.0],
+            ['uid' => Str::uuid(), 'cycle_id' => 2, 'nom' => '4ème', 'moyenne_min_pour_passage' => 10.0],
+            ['uid' => Str::uuid(), 'cycle_id' => 2, 'nom' => '3ème', 'moyenne_min_pour_passage' => 10.0],
+
+            // Lycée
+            ['uid' => Str::uuid(), 'cycle_id' => 3, 'nom' => 'Seconde', 'moyenne_min_pour_passage' => 10.0],
+            ['uid' => Str::uuid(), 'cycle_id' => 3, 'nom' => 'Première', 'moyenne_min_pour_passage' => 10.0],
+            ['uid' => Str::uuid(), 'cycle_id' => 3, 'nom' => 'Terminale', 'moyenne_min_pour_passage' => 10.0],
         ];
+        DB::table('niveaux')->insert($niveaux);
 
-        foreach ($niveaux as $niveau) {
-            DB::table('niveaux')->insert([
-                'uid' => Str::uuid(),
-                'cycle_id' => $niveau['cycle_id'],
-                'nom' => $niveau['nom'],
-                'moyenne_min_pour_passage' => $niveau['moyenne_min_pour_passage'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function seedParentEleves()
-    {
-        $parents = [
-            ['prenom' => 'Jean', 'nom' => 'Dupont', 'telephone' => '0123456789', 'email' => 'jean.dupont@email.com', 'adresse' => '123 Rue Principale'],
-            ['prenom' => 'Marie', 'nom' => 'Martin', 'telephone' => '0234567890', 'email' => 'marie.martin@email.com', 'adresse' => '456 Avenue Centrale'],
-            ['prenom' => 'Pierre', 'nom' => 'Durand', 'telephone' => '0345678901', 'email' => 'pierre.durand@email.com', 'adresse' => '789 Boulevard Secondaire'],
-            ['prenom' => 'Sophie', 'nom' => 'Leroy', 'telephone' => '0456789012', 'email' => 'sophie.leroy@email.com', 'adresse' => '321 Rue de la Gare'],
-            ['prenom' => 'Michel', 'nom' => 'Moreau', 'telephone' => '0567890123', 'email' => 'michel.moreau@email.com', 'adresse' => '654 Avenue du Parc'],
-        ];
-
-        foreach ($parents as $parent) {
-            DB::table('parent_eleves')->insert([
-                'uid' => Str::uuid(),
-                'prenom' => $parent['prenom'],
-                'nom' => $parent['nom'],
-                'telephone' => $parent['telephone'],
-                'email' => $parent['email'],
-                'adresse' => $parent['adresse'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function seedProfesseurs()
-    {
+        // 5. Professeurs
         $professeurs = [
-            ['prenom' => 'Alain', 'nom' => 'Petit', 'telephone' => '0678901234', 'email' => 'alain.petit@ecole.com', 'specialite' => 'Mathématiques'],
-            ['prenom' => 'Catherine', 'nom' => 'Roux', 'telephone' => '0789012345', 'email' => 'catherine.roux@ecole.com', 'specialite' => 'Français'],
-            ['prenom' => 'David', 'nom' => 'Blanc', 'telephone' => '0890123456', 'email' => 'david.blanc@ecole.com', 'specialite' => 'Histoire-Géographie'],
-            ['prenom' => 'Élise', 'nom' => 'Garcia', 'telephone' => '0901234567', 'email' => 'elise.garcia@ecole.com', 'specialite' => 'Sciences'],
-            ['prenom' => 'François', 'nom' => 'Lemoine', 'telephone' => '0112345678', 'email' => 'francois.lemoine@ecole.com', 'specialite' => 'Anglais'],
-            ['prenom' => 'Géraldine', 'nom' => 'Chevalier', 'telephone' => '0223456789', 'email' => 'geraldine.chevalier@ecole.com', 'specialite' => 'EPS'],
+            ['uid' => Str::uuid(), 'prenom' => 'Marie', 'nom' => 'Dupont', 'telephone' => '0123456789', 'email' => 'marie.dupont@ecole.com', 'specialite' => 'Mathématiques'],
+            ['uid' => Str::uuid(), 'prenom' => 'Pierre', 'nom' => 'Martin', 'telephone' => '0123456790', 'email' => 'pierre.martin@ecole.com', 'specialite' => 'Français'],
+            ['uid' => Str::uuid(), 'prenom' => 'Sophie', 'nom' => 'Bernard', 'telephone' => '0123456791', 'email' => 'sophie.bernard@ecole.com', 'specialite' => 'Histoire-Géographie'],
+            ['uid' => Str::uuid(), 'prenom' => 'Luc', 'nom' => 'Petit', 'telephone' => '0123456792', 'email' => 'luc.petit@ecole.com', 'specialite' => 'Sciences'],
+            ['uid' => Str::uuid(), 'prenom' => 'Isabelle', 'nom' => 'Moreau', 'telephone' => '0123456793', 'email' => 'isabelle.moreau@ecole.com', 'specialite' => 'Anglais'],
+            ['uid' => Str::uuid(), 'prenom' => 'Antoine', 'nom' => 'Leroy', 'telephone' => '0123456794', 'email' => 'antoine.leroy@ecole.com', 'specialite' => 'EPS'],
         ];
+        DB::table('professeurs')->insert($professeurs);
 
-        foreach ($professeurs as $prof) {
-            DB::table('professeurs')->insert([
-                'uid' => Str::uuid(),
-                'prenom' => $prof['prenom'],
-                'nom' => $prof['nom'],
-                'telephone' => $prof['telephone'],
-                'email' => $prof['email'],
-                'specialite' => $prof['specialite'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function seedClasses()
-    {
-        $niveaux = DB::table('niveaux')->get();
-        $professeurs = DB::table('professeurs')->get();
-
+        // 6. Classes
         $classes = [
-            ['niveau_id' => $niveaux[0]->id, 'nom' => 'A', 'professeur_id' => $professeurs[0]->id],
-            ['niveau_id' => $niveaux[0]->id, 'nom' => 'B', 'professeur_id' => $professeurs[1]->id],
-            ['niveau_id' => $niveaux[6]->id, 'nom' => 'A', 'professeur_id' => $professeurs[2]->id],
-            ['niveau_id' => $niveaux[6]->id, 'nom' => 'B', 'professeur_id' => $professeurs[3]->id],
-            ['niveau_id' => $niveaux[10]->id, 'nom' => 'A', 'professeur_id' => $professeurs[4]->id],
-            ['niveau_id' => $niveaux[12]->id, 'nom' => 'A', 'professeur_id' => $professeurs[5]->id],
-            ['niveau_id' => $niveaux[0]->id, 'nom' => 'C', 'professeur_id' => $professeurs[0]->id],
-            ['niveau_id' => $niveaux[0]->id, 'nom' => 'D', 'professeur_id' => $professeurs[1]->id],
-            ['niveau_id' => $niveaux[6]->id, 'nom' => 'C', 'professeur_id' => $professeurs[2]->id],
-            ['niveau_id' => $niveaux[6]->id, 'nom' => 'D', 'professeur_id' => $professeurs[3]->id],
-            ['niveau_id' => $niveaux[10]->id, 'nom' => 'C', 'professeur_id' => $professeurs[4]->id],
-            ['niveau_id' => $niveaux[12]->id, 'nom' => 'D', 'professeur_id' => $professeurs[5]->id],
+            // Primaire
+            ['uid' => Str::uuid(), 'niveau_id' => 1, 'nom' => 'CI-A', 'professeur_id' => 1, 'capacite' => 25],
+            ['uid' => Str::uuid(), 'niveau_id' => 2, 'nom' => 'CP-A', 'professeur_id' => 2, 'capacite' => 28],
+            ['uid' => Str::uuid(), 'niveau_id' => 3, 'nom' => 'CE1-A', 'professeur_id' => 3, 'capacite' => 30],
+            ['uid' => Str::uuid(), 'niveau_id' => 4, 'nom' => 'CE2-A', 'professeur_id' => 4, 'capacite' => 30],
+            ['uid' => Str::uuid(), 'niveau_id' => 5, 'nom' => 'CM1-A', 'professeur_id' => 5, 'capacite' => 32],
+            ['uid' => Str::uuid(), 'niveau_id' => 6, 'nom' => 'CM2-A', 'professeur_id' => 6, 'capacite' => 32],
+
+            // Collège
+            ['uid' => Str::uuid(), 'niveau_id' => 7, 'nom' => '6ème-A', 'professeur_id' => 1, 'capacite' => 35],
+            ['uid' => Str::uuid(), 'niveau_id' => 8, 'nom' => '5ème-A', 'professeur_id' => 2, 'capacite' => 35],
+            ['uid' => Str::uuid(), 'niveau_id' => 9, 'nom' => '4ème-A', 'professeur_id' => 3, 'capacite' => 35],
+            ['uid' => Str::uuid(), 'niveau_id' => 10, 'nom' => '3ème-A', 'professeur_id' => 4, 'capacite' => 35],
+
+            // Lycée
+            ['uid' => Str::uuid(), 'niveau_id' => 11, 'nom' => 'Seconde-A', 'professeur_id' => 5, 'capacite' => 35],
+            ['uid' => Str::uuid(), 'niveau_id' => 12, 'nom' => 'Première-A', 'professeur_id' => 6, 'capacite' => 35],
+            ['uid' => Str::uuid(), 'niveau_id' => 13, 'nom' => 'Terminale-A', 'professeur_id' => 1, 'capacite' => 35],
         ];
+        DB::table('classes')->insert($classes);
 
-        foreach ($classes as $classe) {
-            DB::table('classes')->insert([
-                'uid' => Str::uuid(),
-                'niveau_id' => $classe['niveau_id'],
-                'nom' => $classe['nom'],
-                'professeur_id' => $classe['professeur_id'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
+        // 7. Parents d'élèves
+        $parentEleves = [
+            ['uid' => Str::uuid(), 'prenom' => 'Jean', 'nom' => 'Durand', 'telephone' => '0612345678', 'email' => 'jean.durand@email.com', 'adresse' => '123 Rue de Paris, 75001 Paris'],
+            ['uid' => Str::uuid(), 'prenom' => 'Catherine', 'nom' => 'Leroy', 'telephone' => '0612345679', 'email' => 'catherine.leroy@email.com', 'adresse' => '456 Avenue Victor Hugo, 75016 Paris'],
+            ['uid' => Str::uuid(), 'prenom' => 'Michel', 'nom' => 'Moreau', 'telephone' => '0612345680', 'email' => 'michel.moreau@email.com', 'adresse' => '789 Boulevard Saint-Germain, 75006 Paris'],
+            ['uid' => Str::uuid(), 'prenom' => 'Nathalie', 'nom' => 'Simon', 'telephone' => '0612345681', 'email' => 'nathalie.simon@email.com', 'adresse' => '321 Rue de Rivoli, 75004 Paris'],
+            ['uid' => Str::uuid(), 'prenom' => 'Philippe', 'nom' => 'Garcia', 'telephone' => '0612345682', 'email' => 'philippe.garcia@email.com', 'adresse' => '654 Rue du Faubourg Saint-Antoine, 75012 Paris'],
+        ];
+        DB::table('parent_eleves')->insert($parentEleves);
 
-    private function seedEleves()
-    {
-        $parents = DB::table('parent_eleves')->get();
-
+        // 8. Élèves
         $eleves = [
-            ['prenom' => 'Lucas', 'nom' => 'Dupont', 'date_naissance' => '2010-05-15', 'sexe' => 'M', 'parent_eleve_id' => $parents[0]->id],
-            ['prenom' => 'Emma', 'nom' => 'Dupont', 'date_naissance' => '2011-08-22', 'sexe' => 'F', 'parent_eleve_id' => $parents[0]->id],
-            ['prenom' => 'Hugo', 'nom' => 'Martin', 'date_naissance' => '2010-03-10', 'sexe' => 'M', 'parent_eleve_id' => $parents[1]->id],
-            ['prenom' => 'Léa', 'nom' => 'Martin', 'date_naissance' => '2012-11-30', 'sexe' => 'F', 'parent_eleve_id' => $parents[1]->id],
-            ['prenom' => 'Thomas', 'nom' => 'Durand', 'date_naissance' => '2009-12-05', 'sexe' => 'M', 'parent_eleve_id' => $parents[2]->id],
-            ['prenom' => 'Chloé', 'nom' => 'Leroy', 'date_naissance' => '2010-07-18', 'sexe' => 'F', 'parent_eleve_id' => $parents[3]->id],
-            ['prenom' => 'Nathan', 'nom' => 'Moreau', 'date_naissance' => '2011-02-25', 'sexe' => 'M', 'parent_eleve_id' => $parents[4]->id],
-            ['prenom' => 'Manon', 'nom' => 'Moreau', 'date_naissance' => '2009-09-12', 'sexe' => 'F', 'parent_eleve_id' => $parents[4]->id],
+            // Primaire
+            ['uid' => Str::uuid(), 'prenom' => 'Lucas', 'nom' => 'Durand', 'date_naissance' => '2018-03-15', 'sexe' => 'M', 'parent_eleve_id' => 1],
+            ['uid' => Str::uuid(), 'prenom' => 'Emma', 'nom' => 'Durand', 'date_naissance' => '2017-07-22', 'sexe' => 'F', 'parent_eleve_id' => 1],
+            ['uid' => Str::uuid(), 'prenom' => 'Thomas', 'nom' => 'Leroy', 'date_naissance' => '2016-11-08', 'sexe' => 'M', 'parent_eleve_id' => 2],
+            ['uid' => Str::uuid(), 'prenom' => 'Léa', 'nom' => 'Moreau', 'date_naissance' => '2015-05-30', 'sexe' => 'F', 'parent_eleve_id' => 3],
+            ['uid' => Str::uuid(), 'prenom' => 'Hugo', 'nom' => 'Simon', 'date_naissance' => '2014-09-12', 'sexe' => 'M', 'parent_eleve_id' => 4],
+            ['uid' => Str::uuid(), 'prenom' => 'Chloé', 'nom' => 'Garcia', 'date_naissance' => '2013-12-25', 'sexe' => 'F', 'parent_eleve_id' => 5],
+
+            // Collège
+            ['uid' => Str::uuid(), 'prenom' => 'Mathis', 'nom' => 'Durand', 'date_naissance' => '2011-02-14', 'sexe' => 'M', 'parent_eleve_id' => 1],
+            ['uid' => Str::uuid(), 'prenom' => 'Manon', 'nom' => 'Leroy', 'date_naissance' => '2010-08-19', 'sexe' => 'F', 'parent_eleve_id' => 2],
+            ['uid' => Str::uuid(), 'prenom' => 'Enzo', 'nom' => 'Moreau', 'date_naissance' => '2009-04-03', 'sexe' => 'M', 'parent_eleve_id' => 3],
+            ['uid' => Str::uuid(), 'prenom' => 'Camille', 'nom' => 'Simon', 'date_naissance' => '2008-10-17', 'sexe' => 'F', 'parent_eleve_id' => 4],
+
+            // Lycée
+            ['uid' => Str::uuid(), 'prenom' => 'Alexandre', 'nom' => 'Garcia', 'date_naissance' => '2007-01-28', 'sexe' => 'M', 'parent_eleve_id' => 5],
+            ['uid' => Str::uuid(), 'prenom' => 'Sarah', 'nom' => 'Durand', 'date_naissance' => '2006-06-11', 'sexe' => 'F', 'parent_eleve_id' => 1],
+            ['uid' => Str::uuid(), 'prenom' => 'Nathan', 'nom' => 'Leroy', 'date_naissance' => '2005-11-05', 'sexe' => 'M', 'parent_eleve_id' => 2],
         ];
+        DB::table('eleves')->insert($eleves);
 
-        foreach ($eleves as $eleve) {
-            DB::table('eleves')->insert([
-                'uid' => Str::uuid(),
-                'prenom' => $eleve['prenom'],
-                'nom' => $eleve['nom'],
-                'date_naissance' => $eleve['date_naissance'],
-                'sexe' => $eleve['sexe'],
-                'parent_eleve_id' => $eleve['parent_eleve_id'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function seedAnneeScolaires()
-    {
-        $annees = [
+        // 9. Années scolaires
+        $anneeScolaires = [
             [
+                'uid' => Str::uuid(),
                 'nom' => '2023-2024',
                 'date_debut' => '2023-09-04',
                 'date_fin' => '2024-07-05',
-                'actif' => true
+                'actif' => true,
+                'description' => 'Année scolaire 2023-2024'
             ],
             [
-                'nom' => '2022-2023',
-                'date_debut' => '2022-09-05',
-                'date_fin' => '2023-07-04',
-                'actif' => false
+                'uid' => Str::uuid(),
+                'nom' => '2024-2025',
+                'date_debut' => '2024-09-02',
+                'date_fin' => '2025-07-04',
+                'actif' => false,
+                'description' => 'Année scolaire 2024-2025'
             ],
         ];
+        DB::table('annee_scolaires')->insert($anneeScolaires);
 
-        foreach ($annees as $annee) {
-            DB::table('annee_scolaires')->insert([
-                'uid' => Str::uuid(),
-                'nom' => $annee['nom'],
-                'date_debut' => $annee['date_debut'],
-                'date_fin' => $annee['date_fin'],
-                'actif' => $annee['actif'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function seedTrimestres()
-    {
-        $anneeActive = DB::table('annee_scolaires')->where('actif', true)->first();
-
+        // 10. Trimestres pour l'année active
         $trimestres = [
-            [
-                'numero' => 1,
-                'nom' => 'Premier Trimestre',
-                'date_debut' => '2023-09-04',
-                'date_fin' => '2023-12-16',
-                'bareme' => 20
-            ],
-            [
-                'numero' => 2,
-                'nom' => 'Deuxième Trimestre',
-                'date_debut' => '2024-01-08',
-                'date_fin' => '2024-04-06',
-                'bareme' => 20
-            ],
-            [
-                'numero' => 3,
-                'nom' => 'Troisième Trimestre',
-                'date_debut' => '2024-04-22',
-                'date_fin' => '2024-07-05',
-                'bareme' => 20
-            ],
+            // Primaire - 2023-2024
+            ['uid' => Str::uuid(), 'annee_scolaire_id' => 1, 'cycle_id' => 1, 'numero' => 1, 'nom' => 'Premier Trimestre', 'date_debut' => '2023-09-04', 'date_fin' => '2023-12-16', 'bareme' => 10.00, 'is_active' => false, 'mark_as_last' => false],
+            ['uid' => Str::uuid(), 'annee_scolaire_id' => 1, 'cycle_id' => 1, 'numero' => 2, 'nom' => 'Deuxième Trimestre', 'date_debut' => '2024-01-08', 'date_fin' => '2024-03-30', 'bareme' => 10.00, 'is_active' => true, 'mark_as_last' => false],
+            ['uid' => Str::uuid(), 'annee_scolaire_id' => 1, 'cycle_id' => 1, 'numero' => 3, 'nom' => 'Troisième Trimestre', 'date_debut' => '2024-04-15', 'date_fin' => '2024-07-05', 'bareme' => 10.00, 'is_active' => false, 'mark_as_last' => true],
+
+            // Collège - 2023-2024
+            ['uid' => Str::uuid(), 'annee_scolaire_id' => 1, 'cycle_id' => 2, 'numero' => 1, 'nom' => 'Premier Trimestre', 'date_debut' => '2023-09-04', 'date_fin' => '2023-12-16', 'bareme' => 20.00, 'is_active' => false, 'mark_as_last' => false],
+            ['uid' => Str::uuid(), 'annee_scolaire_id' => 1, 'cycle_id' => 2, 'numero' => 2, 'nom' => 'Deuxième Trimestre', 'date_debut' => '2024-01-08', 'date_fin' => '2024-03-30', 'bareme' => 20.00, 'is_active' => true, 'mark_as_last' => false],
+            ['uid' => Str::uuid(), 'annee_scolaire_id' => 1, 'cycle_id' => 2, 'numero' => 3, 'nom' => 'Troisième Trimestre', 'date_debut' => '2024-04-15', 'date_fin' => '2024-07-05', 'bareme' => 20.00, 'is_active' => false, 'mark_as_last' => true],
         ];
+        DB::table('trimestres')->insert($trimestres);
 
-        foreach ($trimestres as $trimestre) {
-            DB::table('trimestres')->insert([
-                'uid' => Str::uuid(),
-                'annee_scolaire_id' => $anneeActive->id,
-                'numero' => $trimestre['numero'],
-                'nom' => $trimestre['nom'],
-                'date_debut' => $trimestre['date_debut'],
-                'date_fin' => $trimestre['date_fin'],
-                'bareme' => $trimestre['bareme'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function seedMatieres()
-    {
-        $niveaux = DB::table('niveaux')->get();
-        $professeurs = DB::table('professeurs')->get();
-
+        // 11. Matières
         $matieres = [
-            ['nom' => 'Mathématiques', 'coefficient' => 4, 'niveau_id' => null, 'professeur_id' => $professeurs[0]->id],
-            ['nom' => 'Français', 'coefficient' => 4, 'niveau_id' => null, 'professeur_id' => $professeurs[1]->id],
-            ['nom' => 'Histoire-Géographie', 'coefficient' => 2, 'niveau_id' => null, 'professeur_id' => $professeurs[2]->id],
-            ['nom' => 'Sciences', 'coefficient' => 3, 'niveau_id' => null, 'professeur_id' => $professeurs[3]->id],
-            ['nom' => 'Anglais', 'coefficient' => 2, 'niveau_id' => null, 'professeur_id' => $professeurs[4]->id],
-            ['nom' => 'EPS', 'coefficient' => 1, 'niveau_id' => null, 'professeur_id' => $professeurs[5]->id],
+            // Primaire
+            ['uid' => Str::uuid(), 'nom' => 'Français', 'coefficient' => 3, 'niveau_id' => 1, 'professeur_id' => 2],
+            ['uid' => Str::uuid(), 'nom' => 'Mathématiques', 'coefficient' => 3, 'niveau_id' => 1, 'professeur_id' => 1],
+            ['uid' => Str::uuid(), 'nom' => 'Éveil', 'coefficient' => 2, 'niveau_id' => 1, 'professeur_id' => 4],
+
+            // Collège
+            ['uid' => Str::uuid(), 'nom' => 'Français', 'coefficient' => 4, 'niveau_id' => 7, 'professeur_id' => 2],
+            ['uid' => Str::uuid(), 'nom' => 'Mathématiques', 'coefficient' => 4, 'niveau_id' => 7, 'professeur_id' => 1],
+            ['uid' => Str::uuid(), 'nom' => 'Histoire-Géographie', 'coefficient' => 3, 'niveau_id' => 7, 'professeur_id' => 3],
+            ['uid' => Str::uuid(), 'nom' => 'Sciences', 'coefficient' => 3, 'niveau_id' => 7, 'professeur_id' => 4],
+            ['uid' => Str::uuid(), 'nom' => 'Anglais', 'coefficient' => 2, 'niveau_id' => 7, 'professeur_id' => 5],
+            ['uid' => Str::uuid(), 'nom' => 'EPS', 'coefficient' => 1, 'niveau_id' => 7, 'professeur_id' => 6],
         ];
+        DB::table('matieres')->insert($matieres);
 
-        foreach ($matieres as $matiere) {
-            DB::table('matieres')->insert([
-                'uid' => Str::uuid(),
-                'nom' => $matiere['nom'],
-                'coefficient' => $matiere['coefficient'],
-                'niveau_id' => $matiere['niveau_id'],
-                'professeur_id' => $matiere['professeur_id'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    private function seedInscriptions()
-    {
-        $classes = DB::table('classes')->get();
-        $eleves = DB::table('eleves')->get();
-        $anneeActive = DB::table('annee_scolaires')->where('actif', true)->first();
-
+        // 12. Inscriptions
         $inscriptions = [];
-        $eleveIndex = 0;
-
-        foreach ($classes as $classe) {
-            // Assigner 2 élèves par classe
-            for ($i = 0; $i < 2; $i++) {
-                if ($eleveIndex < count($eleves)) {
-                    $inscriptions[] = [
-                        'classe_id' => $classe->id,
-                        'eleve_id' => $eleves[$eleveIndex]->id,
-                        'annee_scolaire_id' => $anneeActive->id,
-                        'statut' => 'actif',
-                        'date_inscription' => now(),
-                    ];
-                    $eleveIndex++;
-                }
-            }
-        }
-
-        foreach ($inscriptions as $inscription) {
-            DB::table('inscriptions')->insert([
+        for ($i = 1; $i <= 13; $i++) { // Pour chaque élève
+            $inscriptions[] = [
                 'uid' => Str::uuid(),
-                'date_inscription' => $inscription['date_inscription'],
-                'statut' => $inscription['statut'],
-                'classe_id' => $inscription['classe_id'],
-                'eleve_id' => $inscription['eleve_id'],
-                'annee_scolaire_id' => $inscription['annee_scolaire_id'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                'date_inscription' => '2023-09-04',
+                'statut' => 'actif',
+                'classe_id' => min($i, 13), // Répartir dans les classes
+                'eleve_id' => $i,
+                'annee_scolaire_id' => 1,
+            ];
         }
-    }
+        DB::table('inscriptions')->insert($inscriptions);
 
-    private function seedCompositions()
-    {
-        $trimestres = DB::table('trimestres')->get();
-        $classes = DB::table('classes')->get();
+        // 13. Compositions
+        $compositions = [
+            // Trimestre 2 - Primaire
+            ['uid' => Str::uuid(), 'trimestre_id' => 2, 'classe_id' => 1, 'langue' => 'FR', 'nom' => 'Composition principale'],
+            ['uid' => Str::uuid(), 'trimestre_id' => 2, 'classe_id' => 2, 'langue' => 'FR', 'nom' => 'Composition principale'],
 
-        $compositions = [];
-        $langues = ['Français', 'Anglais'];
+            // Trimestre 2 - Collège
+            ['uid' => Str::uuid(), 'trimestre_id' => 5, 'classe_id' => 7, 'langue' => 'FR', 'nom' => 'Composition principale'],
+        ];
+        DB::table('compositions')->insert($compositions);
 
-        foreach ($trimestres as $trimestre) {
-            foreach ($classes as $classe) {
-                foreach ($langues as $langue) {
-                    $compositions[] = [
-                        'trimestre_id' => $trimestre->id,
-                        'classe_id' => $classe->id,
-                        'langue' => $langue,
-                        'nom' => "Composition {$trimestre->numero} - {$classe->nom} - {$langue}",
-                    ];
-                }
-            }
-        }
+        // 14. Notes (exemple pour quelques élèves)
+        $notes = [];
+        $matieresPrimaire = [1, 2, 3]; // Français, Maths, Éveil
+        $matieresCollege = [4, 5, 6, 7, 8, 9]; // Toutes les matières collège
 
-        foreach ($compositions as $composition) {
-            DB::table('compositions')->insert([
+        // Notes pour élève 1 (CI-A)
+        foreach ($matieresPrimaire as $matiereId) {
+            $notes[] = [
                 'uid' => Str::uuid(),
-                'trimestre_id' => $composition['trimestre_id'],
-                'classe_id' => $composition['classe_id'],
-                'langue' => $composition['langue'],
-                'nom' => $composition['nom'],
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                'inscription_id' => 1,
+                'composition_id' => 1,
+                'matiere_id' => $matiereId,
+                'note' => rand(8, 18) / 2, // Notes entre 4 et 9
+                'sur' => 10.00,
+                'appreciation' => 'Très bon travail',
+            ];
         }
-    }
 
-    private function seedCompositionMatieres()
-    {
-        $compositions = DB::table('compositions')->get();
-        $matieres = DB::table('matieres')->get();
-
-        foreach ($compositions as $composition) {
-            foreach ($matieres as $matiere) {
-                DB::table('composition_matieres')->insert([
-                    'uid' => Str::uuid(),
-                    'composition_id' => $composition->id,
-                    'matiere_id' => $matiere->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+        // Notes pour élève 7 (6ème-A)
+        foreach ($matieresCollege as $matiereId) {
+            $notes[] = [
+                'uid' => Str::uuid(),
+                'inscription_id' => 7,
+                'composition_id' => 3,
+                'matiere_id' => $matiereId,
+                'note' => rand(10, 38) / 2, // Notes entre 5 et 19
+                'sur' => 20.00,
+                'appreciation' => 'Bon travail',
+            ];
         }
-    }
 
-    private function seedNotes()
-    {
-        $inscriptions = DB::table('inscriptions')->get();
-        $compositions = DB::table('compositions')->get();
-        $matieres = DB::table('matieres')->get();
+        DB::table('notes')->insert($notes);
 
-        foreach ($inscriptions as $inscription) {
-            foreach ($compositions as $composition) {
-                foreach ($matieres as $matiere) {
-                    $note = rand(8, 18) + (rand(0, 10) / 10); // Note entre 8.0 et 18.9
-                    
-                    DB::table('notes')->insert([
-                        'uid' => Str::uuid(),
-                        'inscription_id' => $inscription->id,
-                        'composition_id' => $composition->id,
-                        'matiere_id' => $matiere->id,
-                        'note' => $note,
-                        'sur' => 20,
-                        'appreciation' => $this->getAppreciation($note),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-            }
-        }
-    }
+        // 15. Services
+        $services = [
+            ['uid' => Str::uuid(), 'nom' => 'Scolarité', 'code' => 'SCOL_MENS', 'montant' => 5000.00, 'montant_a_payer' => 10000.00, 'obligatoire' => true, 'description' => 'Frais de scolarité mensuels', 'actif' => true],
+            ['uid' => Str::uuid(), 'nom' => 'Transport scolaire', 'code' => 'TRANS', 'montant' => 2000.00, 'montant_a_payer' => null, 'obligatoire' => false, 'description' => 'Service de transport scolaire', 'actif' => true],
+            ['uid' => Str::uuid(), 'nom' => 'Cantine', 'code' => 'CANT', 'montant' => 1500.00, 'montant_a_payer' => null, 'obligatoire' => false, 'description' => 'Service de restauration', 'actif' => true],
+            ['uid' => Str::uuid(), 'nom' => 'Frais de dossier', 'code' => 'DOSSIER', 'montant' => 0.00, 'montant_a_payer' => 5000.00, 'obligatoire' => true, 'description' => 'Frais d\'inscription et de dossier', 'actif' => true],
+        ];
+        DB::table('services')->insert($services);
 
-    private function seedBulletins()
-    {
-        $inscriptions = DB::table('inscriptions')
-            ->join('eleves', 'inscriptions.eleve_id', '=', 'eleves.id')
-            ->join('classes', 'inscriptions.classe_id', '=', 'classes.id')
-            ->join('niveaux', 'classes.niveau_id', '=', 'niveaux.id')
-            ->join('annee_scolaires', 'inscriptions.annee_scolaire_id', '=', 'annee_scolaires.id')
-            ->select('inscriptions.*', 'eleves.nom as eleve_nom', 'classes.nom as classe_nom', 
-                    'niveaux.nom as niveau_nom', 'annee_scolaires.nom as annee_scolaire_nom')
-            ->get();
+        // 16. Service Ciblages
+        // Dans la section "16. Service Ciblages" du seeder, remplacez par :
+        $serviceCiblages = [
+            // Scolarité pour tous les niveaux
+            ['uid' => Str::uuid(), 'service_id' => 1, 'ciblable_type' => 'App\\Models\\Niveau', 'ciblable_id' => 1],
+            ['uid' => Str::uuid(), 'service_id' => 1, 'ciblable_type' => 'App\\Models\\Niveau', 'ciblable_id' => 2],
+            // Transport pour certaines classes
+            ['uid' => Str::uuid(), 'service_id' => 2, 'ciblable_type' => 'App\\Models\\Classe', 'ciblable_id' => 1],
+            ['uid' => Str::uuid(), 'service_id' => 2, 'ciblable_type' => 'App\\Models\\Classe', 'ciblable_id' => 2],
+        ];
+        DB::table('service_ciblages')->insert($serviceCiblages);
 
-        $trimestres = DB::table('trimestres')->get();
-        $professeurs = DB::table('professeurs')->get();
+        // 17. Bus
+        $buses = [
+            ['uid' => Str::uuid(), 'immatriculation' => 'AB-123-CD', 'marque' => 'Mercedes', 'modele' => 'Sprinter', 'capacite' => 50, 'chauffeur_nom' => 'Mohamed Diop', 'chauffeur_telephone' => '0771234567', 'etat' => 'actif'],
+            ['uid' => Str::uuid(), 'immatriculation' => 'EF-456-GH', 'marque' => 'Toyota', 'modele' => 'Coaster', 'capacite' => 30, 'chauffeur_nom' => 'Ibrahim Ndiaye', 'chauffeur_telephone' => '0777654321', 'etat' => 'actif'],
+        ];
+        DB::table('buses')->insert($buses);
 
-        foreach ($inscriptions as $inscription) {
-            foreach ($trimestres as $trimestre) {
-                $moyenne = rand(10, 16) + (rand(0, 9) / 10); // Moyenne entre 10.0 et 16.9
-                $rang = rand(1, 25);
-                $moyenneClasse = rand(11, 14) + (rand(0, 9) / 10);
+        // 18. Matériels
+        $materiels = [
+            ['uid' => Str::uuid(), 'nom' => 'Table élève', 'reference' => 'TAB-ELV-01', 'description' => 'Table individuelle pour élève'],
+            ['uid' => Str::uuid(), 'nom' => 'Chaise élève', 'reference' => 'CHA-ELV-01', 'description' => 'Chaise standard pour élève'],
+            ['uid' => Str::uuid(), 'nom' => 'Tableau blanc', 'reference' => 'TAB-BLANC-01', 'description' => 'Tableau blanc effaçable'],
+            ['uid' => Str::uuid(), 'nom' => 'Ordinateur portable', 'reference' => 'HP-250-G8', 'description' => 'Ordinateur portable HP pour enseignant'],
+            ['uid' => Str::uuid(), 'nom' => 'Projecteur vidéo', 'reference' => 'EPSON-XP', 'description' => 'Projecteur multimédia'],
+        ];
+        DB::table('materiels')->insert($materiels);
 
-                DB::table('bulletins')->insert([
-                    'uid' => Str::uuid(),
-                    'inscription_id' => $inscription->id,
-                    'trimestre_id' => $trimestre->id,
-                    'annuel' => false,
-                    'annee_scolaire_nom' => $inscription->annee_scolaire_nom,
-                    'trimestre_nom' => $trimestre->nom,
-                    'eleve_nom' => $inscription->eleve_nom,
-                    'classe_nom' => $inscription->classe_nom,
-                    'niveau_nom' => $inscription->niveau_nom,
-                    'moyenne_eleve' => $moyenne,
-                    'rang' => $rang,
-                    'moyenne_classe' => $moyenneClasse,
-                    'professeur_nom' => $professeurs[0]->prenom . ' ' . $professeurs[0]->nom,
-                    'professeur_fonction' => 'Professeur Principal',
-                    'directeur_nom' => 'M. Le Directeur',
-                    'directeur_fonction' => 'Directeur de l\'établissement',
-                    'parent_nom' => 'Parent d\'élève',
-                    'parent_lien' => 'Père/Mère',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-        }
-    }
+        // 19. Inventaire des classes
+        $inventaireClasses = [
+            ['uid' => Str::uuid(), 'classe_id' => 1, 'materiel_id' => 1, 'quantite' => 25, 'etat' => 'bon', 'date_ajout' => '2023-09-01', 'observation' => 'Nouveau matériel'],
+            ['uid' => Str::uuid(), 'classe_id' => 1, 'materiel_id' => 2, 'quantite' => 25, 'etat' => 'bon', 'date_ajout' => '2023-09-01', 'observation' => 'Nouveau matériel'],
+            ['uid' => Str::uuid(), 'classe_id' => 1, 'materiel_id' => 3, 'quantite' => 1, 'etat' => 'bon', 'date_ajout' => '2023-09-01', 'observation' => 'Tableau neuf'],
+        ];
+        DB::table('inventaire_classes')->insert($inventaireClasses);
 
-    private function seedBulletinDetails()
-    {
-        $bulletins = DB::table('bulletins')->get();
-        $matieres = DB::table('matieres')->get();
+        // 20. Inventaire des enseignants
+        $inventaireEnseignants = [
+            ['uid' => Str::uuid(), 'professeur_id' => 1, 'materiel_id' => 4, 'quantite' => 1, 'etat' => 'bon', 'date_attribution' => '2023-09-01', 'observation' => 'Pour préparer les cours'],
+            ['uid' => Str::uuid(), 'professeur_id' => 2, 'materiel_id' => 5, 'quantite' => 1, 'etat' => 'bon', 'date_attribution' => '2023-09-01', 'observation' => 'Projecteur pour cours multimédias'],
+        ];
+        DB::table('inventaire_enseignants')->insert($inventaireEnseignants);
 
-        foreach ($bulletins as $bulletin) {
-            foreach ($matieres as $matiere) {
-                $note = rand(8, 18) + (rand(0, 10) / 10);
-                $noteNormalisee = ($note / 20) * $bulletin->moyenne_eleve;
+        // 21. Utilisateurs
+        $users = [
+            // Administrateur
+            [
+                'name' => 'Administrateur',
+                'email' => 'admin@ecole.com',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'userable_type' => 'App\\Models\\Professeur',
+                'userable_id' => 1,
+                'remember_token' => Str::random(10),
+            ],
+            // Professeurs
+            [
+                'name' => 'Marie Dupont',
+                'email' => 'marie.dupont@ecole.com',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'userable_type' => 'App\\Models\\Professeur',
+                'userable_id' => 1,
+                'remember_token' => Str::random(10),
+            ],
+            [
+                'name' => 'Pierre Martin',
+                'email' => 'pierre.martin@ecole.com',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'userable_type' => 'App\\Models\\Professeur',
+                'userable_id' => 2,
+                'remember_token' => Str::random(10),
+            ],
+            // Parent
+            [
+                'name' => 'Jean Durand',
+                'email' => 'jean.durand@email.com',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'userable_type' => 'App\\Models\\ParentEleve',
+                'userable_id' => 1,
+                'remember_token' => Str::random(10),
+            ],
+        ];
+        DB::table('users')->insert($users);
 
-                DB::table('bulletin_details')->insert([
-                    'uid' => Str::uuid(),
-                    'bulletin_id' => $bulletin->id,
-                    'matiere_id' => $matiere->id,
-                    'matiere_nom' => $matiere->nom,
-                    'coefficient' => $matiere->coefficient,
-                    'professeur_nom' => 'Professeur ' . $matiere->nom,
-                    'note' => $note,
-                    'sur' => 20,
-                    'note_normalisee' => $noteNormalisee,
-                    'appreciation' => $this->getAppreciation($note),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-        }
-    }
+        // Réactiver les contraintes de clés étrangères
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-    private function getAppreciation($note)
-    {
-        if ($note >= 16) return 'Excellent';
-        if ($note >= 14) return 'Très bien';
-        if ($note >= 12) return 'Bien';
-        if ($note >= 10) return 'Assez bien';
-        if ($note >= 8) return 'Passable';
-        return 'Insuffisant';
+        $this->command->info('Base de données peuplée avec succès!');
+        $this->command->info('Comptes de test créés:');
+        $this->command->info('Admin: admin@ecole.com / password');
+        $this->command->info('Professeur: marie.dupont@ecole.com / password');
+        $this->command->info('Parent: jean.durand@email.com / password');
     }
 }
