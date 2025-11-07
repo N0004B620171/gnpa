@@ -71,6 +71,17 @@ Route::prefix('transfert')->group(function () {
     Route::post('/annuler/{id}', [TransfertAnneeController::class, 'annuler'])->name('transfert.annuler');
 });
 
+Route::get('/bulletins/bulk-download', [BulletinController::class, 'bulkDownload'])->name('bulletins.bulk-download');
+Route::post('/bulletins/bulk-generate', [BulletinController::class, 'bulkGenerate'])->name('bulletins.bulk-generate');
+
+
+// Inscriptions complètes
+Route::post('/inscriptions/complete', [InscriptionController::class, 'storeComplete'])
+    ->name('inscriptions.complete.store');
+
+Route::get('/classes/{classe}/inscription-data', [InscriptionController::class, 'getDataForCompleteInscription'])
+    ->name('classes.inscription-data');
+
 Route::prefix('historique-transferts')->group(function () {
     Route::get('/', [HistoriqueTransfertController::class, 'index'])->name('historique-transferts.index');
     Route::get('/{historiqueTransfert}', [HistoriqueTransfertController::class, 'show'])->name('historique-transferts.show');

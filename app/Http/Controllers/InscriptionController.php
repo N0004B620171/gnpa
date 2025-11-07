@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Events\InscriptionCreated;
 use App\Helpers\ServiceCiblageHelper;
+use App\Models\Niveau;
 use App\Models\Service;
 use App\Models\ServiceCiblage;
 
@@ -36,14 +37,30 @@ class InscriptionController extends Controller
                 ->orWhereHas('anneeScolaire', fn($q) => $q->where('nom', 'like', "%{$search}%"));
         }
 
+        // 🏫 Filtre par classe
+        if ($request->filled('classe_id')) {
+            $query->where('classe_id', $request->classe_id);
+        }
+
+        // 📊 Filtre par niveau
+        if ($request->filled('niveau_id')) {
+            $query->whereHas('classe', function ($q) use ($request) {
+                $q->where('niveau_id', $request->niveau_id);
+            });
+        }
+
         // 📊 Pagination
         $perPage = $request->get('perPage', 10);
         $inscriptions = $query->paginate($perPage);
 
         return Inertia::render('Inscriptions/Index', [
             'inscriptions' => $inscriptions,
+            'classes' => Classe::with('niveau')->orderBy('nom')->get(['id', 'nom', 'niveau_id']),
+            'niveaux' => Niveau::with('cycle')->orderBy('nom')->get(['id', 'nom', 'cycle_id']),
             'filters' => [
                 'search' => $request->search,
+                'classe_id' => $request->classe_id,
+                'niveau_id' => $request->niveau_id,
                 'perPage' => $perPage,
             ],
         ]);

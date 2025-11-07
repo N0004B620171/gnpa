@@ -20,17 +20,22 @@ class MatiereController extends Controller
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
             $query->where('nom', 'LIKE', "%{$search}%")
-                  ->orWhereHas('niveau', function($q) use ($search) {
-                      $q->where('nom', 'LIKE', "%{$search}%");
-                  })
-                  ->orWhereHas('professeur', function($q) use ($search) {
-                      $q->where('prenom', 'LIKE', "%{$search}%")
+                ->orWhereHas('niveau', function ($q) use ($search) {
+                    $q->where('nom', 'LIKE', "%{$search}%");
+                })
+                ->orWhereHas('professeur', function ($q) use ($search) {
+                    $q->where('prenom', 'LIKE', "%{$search}%")
                         ->orWhere('nom', 'LIKE', "%{$search}%");
-                  });
+                });
         }
 
         if ($request->has('niveau_id') && $request->niveau_id != '') {
             $query->where('niveau_id', $request->niveau_id);
+        }
+
+        // Nouveau filtre : par professeur
+        if ($request->has('professeur_id') && $request->professeur_id != '') {
+            $query->where('professeur_id', $request->professeur_id);
         }
 
         $perPage = $request->get('perPage', 10);
@@ -43,6 +48,7 @@ class MatiereController extends Controller
             'filters' => [
                 'search' => $request->search,
                 'niveau_id' => $request->niveau_id,
+                'professeur_id' => $request->professeur_id,
                 'perPage' => $perPage
             ]
         ]);
@@ -84,7 +90,7 @@ class MatiereController extends Controller
 
         // Charger les compositions disponibles pour l'ajout
         $compositionsDisponibles = Composition::with(['trimestre.anneeScolaire', 'classe.niveau'])
-            ->whereDoesntHave('matieres', function($query) use ($matiere) {
+            ->whereDoesntHave('matieres', function ($query) use ($matiere) {
                 $query->where('matiere_id', $matiere->id);
             })
             ->get();
@@ -145,7 +151,6 @@ class MatiereController extends Controller
 
             return redirect()->route('matieres.index')
                 ->with('success', 'Matière supprimée avec succès');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
@@ -180,7 +185,6 @@ class MatiereController extends Controller
 
             return redirect()->back()
                 ->with('success', 'Matière ajoutée à la composition avec succès');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur attachComposition', ['error' => $e->getMessage()]);
@@ -195,7 +199,7 @@ class MatiereController extends Controller
         try {
             // Vérifier s'il y a des notes pour cette matière dans la composition
             $notesCount = $matiere->notes()
-                ->whereHas('composition', function($query) use ($compositionId) {
+                ->whereHas('composition', function ($query) use ($compositionId) {
                     $query->where('id', $compositionId);
                 })
                 ->count();
@@ -212,7 +216,6 @@ class MatiereController extends Controller
 
             return redirect()->back()
                 ->with('success', 'Matière retirée de la composition avec succès');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()

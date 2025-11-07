@@ -1,13 +1,109 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import Select from 'react-select';
 
 const Index = ({ eleves, classes, filters }) => {
     const { flash } = usePage().props;
     const [search, setSearch] = useState(filters.search || '');
     const [classeId, setClasseId] = useState(filters.classe_id || '');
     const [statut, setStatut] = useState(filters.statut || '');
+    const [inscriptionStatut, setInscriptionStatut] = useState(filters.inscription_statut || '');
     const [perPage, setPerPage] = useState(filters.perPage || 10);
+
+    // Préparer les options pour react-select
+    const classeOptions = useMemo(() => [
+        { value: '', label: 'Toutes les classes' },
+        ...classes.map((classe) => ({
+            value: classe.id,
+            label: ` ${classe.niveau?.nom} ${classe.nom}`,
+            ...classe
+        }))
+    ], [classes]);
+
+    const statutOptions = [
+        { value: '', label: 'Tous les statuts' },
+        { value: 'avec_parent', label: 'Avec parent' },
+        { value: 'sans_parent', label: 'Sans parent' }
+    ];
+
+    const inscriptionStatutOptions = [
+        { value: '', label: 'Tous les élèves' },
+        { value: 'inscrit', label: 'Inscrits' },
+        { value: 'non_inscrit', label: 'Non inscrits' }
+    ];
+
+    const perPageOptions = [
+        { value: '10', label: '10 par page' },
+        { value: '20', label: '20 par page' },
+        { value: '50', label: '50 par page' }
+    ];
+
+    // Styles personnalisés pour react-select
+    const customStyles = {
+        control: (base, state) => ({
+            ...base,
+            minHeight: '52px',
+            borderRadius: '12px',
+            border: `2px solid ${state.isFocused ? '#10b981' : '#e5e7eb'}`,
+            boxShadow: state.isFocused ? '0 0 0 4px rgba(16, 185, 129, 0.2)' : 'none',
+            '&:hover': {
+                borderColor: state.isFocused ? '#10b981' : '#d1d5db'
+            },
+            backgroundColor: 'white'
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected ? '#10b981' : state.isFocused ? '#d1fae5' : 'white',
+            color: state.isSelected ? 'white' : '#1f2937',
+            padding: '12px 16px',
+            fontSize: '14px',
+            '&:active': {
+                backgroundColor: state.isSelected ? '#10b981' : '#a7f3d0'
+            }
+        }),
+        menu: (base) => ({
+            ...base,
+            borderRadius: '12px',
+            border: '2px solid #e5e7eb',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            zIndex: 50
+        }),
+        menuList: (base) => ({
+            ...base,
+            borderRadius: '10px',
+            padding: '4px'
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#6b7280',
+            fontSize: '14px'
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#1f2937',
+            fontSize: '14px',
+            fontWeight: '500'
+        }),
+        indicatorSeparator: () => ({
+            display: 'none'
+        }),
+        dropdownIndicator: (base, state) => ({
+            ...base,
+            color: state.isFocused ? '#10b981' : '#6b7280',
+            '&:hover': {
+                color: '#10b981'
+            }
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#ef4444'
+            }
+        })
+    };
 
     const debounce = (func, wait) => {
         let timeout;
@@ -26,8 +122,45 @@ const Index = ({ eleves, classes, filters }) => {
             search: newFilters.search !== undefined ? newFilters.search : search,
             classe_id: newFilters.classe_id !== undefined ? newFilters.classe_id : classeId,
             statut: newFilters.statut !== undefined ? newFilters.statut : statut,
-            perPage
+            inscription_statut: newFilters.inscription_statut !== undefined ? newFilters.inscription_statut : inscriptionStatut,
+            perPage: newFilters.perPage !== undefined ? newFilters.perPage : perPage
         }, {
+            preserveState: true,
+            replace: true
+        });
+    };
+
+    const handleClasseChange = (selectedOption) => {
+        const value = selectedOption?.value || '';
+        setClasseId(value);
+        updateFilters({ classe_id: value });
+    };
+
+    const handleStatutChange = (selectedOption) => {
+        const value = selectedOption?.value || '';
+        setStatut(value);
+        updateFilters({ statut: value });
+    };
+
+    const handleInscriptionStatutChange = (selectedOption) => {
+        const value = selectedOption?.value || '';
+        setInscriptionStatut(value);
+        updateFilters({ inscription_statut: value });
+    };
+
+    const handlePerPageChange = (selectedOption) => {
+        const value = selectedOption?.value || '10';
+        setPerPage(value);
+        updateFilters({ perPage: value });
+    };
+
+    const resetFilters = () => {
+        setSearch('');
+        setClasseId('');
+        setStatut('');
+        setInscriptionStatut('');
+        setPerPage(10);
+        router.get('/eleves', {}, {
             preserveState: true,
             replace: true
         });
@@ -42,6 +175,12 @@ const Index = ({ eleves, classes, filters }) => {
     const getInscriptionActuelle = (eleve) => {
         return eleve.inscriptions?.find(ins => ins.statut === 'actif');
     };
+
+    // Valeurs sélectionnées pour react-select
+    const selectedClasse = classeOptions.find(opt => opt.value == classeId) || null;
+    const selectedStatut = statutOptions.find(opt => opt.value == statut) || null;
+    const selectedInscriptionStatut = inscriptionStatutOptions.find(opt => opt.value == inscriptionStatut) || null;
+    const selectedPerPage = perPageOptions.find(opt => opt.value == perPage.toString()) || perPageOptions[0];
 
     return (
         <AppLayout>
@@ -113,78 +252,194 @@ const Index = ({ eleves, classes, filters }) => {
                     </div>
                 </div>
 
-                {/* Filtres et Recherche */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                        <div className="lg:col-span-1">
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="Rechercher un élève..."
-                                    defaultValue={search}
-                                    onChange={(e) => {
-                                        setSearch(e.target.value);
-                                        handleSearch(e.target.value);
-                                    }}
-                                    className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <select
-                                value={classeId}
-                                onChange={(e) => {
-                                    setClasseId(e.target.value);
-                                    updateFilters({ classe_id: e.target.value });
-                                }}
-                                className="block w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200"
-                            >
-                                <option value="">Toutes les classes</option>
-                                {classes.map((classe) => (
-                                    <option key={classe.id} value={classe.id}>
-                                        {classe.niveau?.cycle?.nom} - {classe.niveau?.nom} {classe.nom}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <select
-                                value={statut}
-                                onChange={(e) => {
-                                    setStatut(e.target.value);
-                                    updateFilters({ statut: e.target.value });
-                                }}
-                                className="block w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200"
-                            >
-                                <option value="">Tous les statuts</option>
-                                <option value="avec_parent">Avec parent</option>
-                                <option value="sans_parent">Sans parent</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <select
-                                value={perPage}
-                                onChange={(e) => {
-                                    setPerPage(e.target.value);
-                                    updateFilters({ perPage: e.target.value });
-                                }}
-                                className="block w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200"
-                            >
-                                <option value="10">10 par page</option>
-                                <option value="20">20 par page</option>
-                                <option value="50">50 par page</option>
-                            </select>
-                        </div>
-                    </div>
+              {/* Filtres et Recherche avec React Select */}
+<div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
+    <div className="flex flex-col xl:flex-row gap-4 items-end">
+        {/* Champ de recherche */}
+        <div className="w-full xl:flex-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                🔍 Recherche
+            </label>
+            <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                 </div>
+                <input
+                    type="text"
+                    placeholder="Rechercher un élève..."
+                    defaultValue={search}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        handleSearch(e.target.value);
+                    }}
+                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 hover:border-gray-300"
+                />
+            </div>
+        </div>
+
+        {/* Sélecteur classe */}
+        <div className="w-full xl:w-48">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                🏫 Classe
+            </label>
+            <Select
+                options={classeOptions}
+                value={selectedClasse}
+                onChange={handleClasseChange}
+                styles={customStyles}
+                isClearable
+                placeholder="Toutes"
+            />
+        </div>
+
+        {/* Sélecteur statut parent */}
+        <div className="w-full xl:w-48">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                👨‍👩‍👧‍👦 Parent
+            </label>
+            <Select
+                options={statutOptions}
+                value={selectedStatut}
+                onChange={handleStatutChange}
+                styles={customStyles}
+                isClearable
+                placeholder="Tous"
+            />
+        </div>
+
+        {/* Sélecteur inscription */}
+        <div className="w-full xl:w-48">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                📝 Inscription
+            </label>
+            <Select
+                options={inscriptionStatutOptions}
+                value={selectedInscriptionStatut}
+                onChange={handleInscriptionStatutChange}
+                styles={customStyles}
+                isClearable
+                placeholder="Tous"
+            />
+        </div>
+
+        {/* Sélecteur résultats par page */}
+        <div className="w-full xl:w-32">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                📄 Par page
+            </label>
+            <Select
+                options={perPageOptions}
+                value={selectedPerPage}
+                onChange={handlePerPageChange}
+                styles={customStyles}
+                isSearchable={false}
+            />
+        </div>
+
+        {/* Bouton reset */}
+        <div className="w-full xl:w-auto">
+            <button
+                onClick={resetFilters}
+                className="w-full xl:w-auto px-6 py-3 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap font-medium h-[52px] group"
+            >
+                <svg className="w-4 h-4 flex-shrink-0 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Réinitialiser
+            </button>
+        </div>
+    </div>
+</div>
+
+{/* Indicateurs de filtres actifs */}
+{(search || classeId || statut || inscriptionStatut) && (
+    <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-4 mb-6">
+        <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Filtres actifs :
+            </span>
+            
+            {search && (
+                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
+                    <span className="font-medium">Recherche:</span> "{search}"
+                    <button
+                        onClick={() => {
+                            setSearch('');
+                            updateFilters({ search: '' });
+                        }}
+                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                        title="Supprimer la recherche"
+                    >
+                        ×
+                    </button>
+                </span>
+            )}
+            
+            {classeId && (
+                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
+                    <span className="font-medium">Classe:</span> {classes.find(c => c.id == classeId)?.nom}
+                    <button
+                        onClick={() => {
+                            setClasseId('');
+                            updateFilters({ classe_id: '' });
+                        }}
+                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                        title="Supprimer le filtre classe"
+                    >
+                        ×
+                    </button>
+                </span>
+            )}
+            
+            {statut && (
+                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
+                    <span className="font-medium">Parent:</span> {statut === 'avec_parent' ? 'Avec parent' : 'Sans parent'}
+                    <button
+                        onClick={() => {
+                            setStatut('');
+                            updateFilters({ statut: '' });
+                        }}
+                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                        title="Supprimer le filtre parent"
+                    >
+                        ×
+                    </button>
+                </span>
+            )}
+            
+            {inscriptionStatut && (
+                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
+                    <span className="font-medium">Inscription:</span> {inscriptionStatut === 'inscrit' ? 'Inscrits' : 'Non inscrits'}
+                    <button
+                        onClick={() => {
+                            setInscriptionStatut('');
+                            updateFilters({ inscription_statut: '' });
+                        }}
+                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                        title="Supprimer le filtre inscription"
+                    >
+                        ×
+                    </button>
+                </span>
+            )}
+            
+            <button
+                onClick={resetFilters}
+                className="ml-auto text-sm text-emerald-600 hover:text-emerald-800 font-medium flex items-center gap-1 transition-colors"
+            >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Tout effacer
+            </button>
+        </div>
+    </div>
+)}
 
                 {/* Liste des Élèves */}
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
@@ -200,7 +455,7 @@ const Index = ({ eleves, classes, filters }) => {
                     <div className="divide-y divide-gray-200">
                         {eleves.data.map((eleve) => {
                             const inscriptionActuelle = getInscriptionActuelle(eleve);
-                            
+
                             return (
                                 <div key={eleve.id} className="hover:bg-gray-50/50 transition-all duration-200">
                                     <div className="px-6 py-6">
@@ -223,7 +478,7 @@ const Index = ({ eleves, classes, filters }) => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="space-y-2">
                                                 <div className="flex items-center text-sm text-gray-600">
                                                     <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,13 +486,13 @@ const Index = ({ eleves, classes, filters }) => {
                                                     </svg>
                                                     {eleve.sexe === 'M' ? 'Masculin' : 'Féminin'}
                                                 </div>
-                                                
+
                                                 {eleve.parent_eleve && (
                                                     <div className="text-sm text-gray-600">
                                                         Parent: {eleve.parent_eleve.prenom} {eleve.parent_eleve.nom}
                                                     </div>
                                                 )}
-                                                
+
                                                 {inscriptionActuelle && (
                                                     <div className="flex items-center">
                                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
@@ -295,7 +550,7 @@ const Index = ({ eleves, classes, filters }) => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="col-span-2">
                                                 <div className="space-y-1">
                                                     <div className="text-sm font-medium text-gray-900">
@@ -306,7 +561,7 @@ const Index = ({ eleves, classes, filters }) => {
                                                     )}
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="col-span-3">
                                                 {eleve.parent_eleve ? (
                                                     <div className="space-y-1">
@@ -321,7 +576,7 @@ const Index = ({ eleves, classes, filters }) => {
                                                     </span>
                                                 )}
                                             </div>
-                                            
+
                                             <div className="col-span-2">
                                                 {inscriptionActuelle ? (
                                                     <div className="space-y-1">
@@ -336,7 +591,7 @@ const Index = ({ eleves, classes, filters }) => {
                                                     </span>
                                                 )}
                                             </div>
-                                            
+
                                             <div className="col-span-2">
                                                 <div className="flex justify-end space-x-2">
                                                     <Link
@@ -415,13 +670,12 @@ const Index = ({ eleves, classes, filters }) => {
                                     key={index}
                                     onClick={() => router.get(link.url || '#')}
                                     disabled={!link.url}
-                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                                        link.active
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${link.active
                                             ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg'
                                             : link.url
-                                            ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-emerald-500 hover:text-emerald-600'
-                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                    }`}
+                                                ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-emerald-500 hover:text-emerald-600'
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ))}

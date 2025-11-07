@@ -34,24 +34,41 @@ class EleveController extends Controller
             });
         }
 
-        // Filtrage
+        // Filtrage par classe
         if ($request->filled('classe_id')) {
             $query->whereHas(
                 'inscriptions',
-                fn($q) =>
-                $q->where('classe_id', $request->classe_id)
+                fn($q) => $q->where('classe_id', $request->classe_id)
                     ->where('statut', 'actif')
             );
         }
 
+        // Filtrage par statut parent
         if ($request->filled('statut')) {
-            if ($request->statut === 'avec_parent') $query->whereNotNull('parent_eleve_id');
-            elseif ($request->statut === 'sans_parent') $query->whereNull('parent_eleve_id');
+            if ($request->statut === 'avec_parent') {
+                $query->whereNotNull('parent_eleve_id');
+            } elseif ($request->statut === 'sans_parent') {
+                $query->whereNull('parent_eleve_id');
+            }
+        }
+
+        // Nouveau filtre : inscription
+        if ($request->filled('inscription_statut')) {
+            if ($request->inscription_statut === 'inscrit') {
+                $query->whereHas('inscriptions', function ($q) {
+                    $q->where('statut', 'actif');
+                });
+            } elseif ($request->inscription_statut === 'non_inscrit') {
+                $query->whereDoesntHave('inscriptions', function ($q) {
+                    $q->where('statut', 'actif');
+                });
+            }
         }
 
         $eleves = $query->paginate($request->get('perPage', 10));
+
         $eleves->getCollection()->transform(function ($eleve) {
-            $eleve->created_at_formatted = $eleve->created_at->format('d/m/Y');
+            $eleve->created_at_formatted = Carbon::parse($eleve->created_at)->format('d/m/Y');
             if ($eleve->date_naissance) {
                 $eleve->date_naissance_formatted = Carbon::parse($eleve->date_naissance)->format('d/m/Y');
                 $eleve->age = Carbon::parse($eleve->date_naissance)->age;
@@ -66,6 +83,7 @@ class EleveController extends Controller
                 'search' => $request->search,
                 'classe_id' => $request->classe_id,
                 'statut' => $request->statut,
+                'inscription_statut' => $request->inscription_statut,
                 'perPage' => $request->get('perPage', 10)
             ]
         ]);
@@ -172,7 +190,7 @@ class EleveController extends Controller
             $eleve->date_naissance_formatted = Carbon::parse($eleve->date_naissance)->format('d/m/Y');
             $eleve->age = Carbon::parse($eleve->date_naissance)->age;
         }
-        $eleve->created_at_formatted = $eleve->created_at->format('d/m/Y à H:i');
+        $eleve->created_at_formatted = Carbon::parse($eleve->created_at)->format('d/m/Y à H:i');
 
         $eleve->load([
             'parentEleve',

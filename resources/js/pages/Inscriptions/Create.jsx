@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import Select from 'react-select';
 
 const Create = ({ eleves, classes, anneesScolaires }) => {
     const { data, setData, post, processing, errors } = useForm({
@@ -16,6 +17,44 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
         post('/inscriptions');
     };
 
+    // Préparer les options pour react-select
+    const eleveOptions = eleves.map(eleve => ({
+        value: eleve.id,
+        label: `${eleve.prenom} ${eleve.nom}`,
+        ...eleve
+    }));
+
+    const classeOptions = classes.map(classe => ({
+        value: classe.id,
+        label: `${classe.nom} - ${classe.niveau?.nom}`,
+        ...classe
+    }));
+
+    const anneeOptions = anneesScolaires.map(annee => ({
+        value: annee.id,
+        label: annee.nom,
+        ...annee
+    }));
+
+    const customStyles = {
+        control: (base, state) => ({
+            ...base,
+            padding: '8px 4px',
+            borderRadius: '12px',
+            border: `2px solid ${errors.eleve_id ? '#ef4444' : '#e5e7eb'}`,
+            boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.2)' : 'none',
+            borderColor: state.isFocused ? '#3b82f6' : (errors.eleve_id ? '#ef4444' : '#e5e7eb'),
+            '&:hover': {
+                borderColor: state.isFocused ? '#3b82f6' : (errors.eleve_id ? '#ef4444' : '#d1d5db')
+            }
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#dbeafe' : 'white',
+            color: state.isSelected ? 'white' : '#1f2937',
+            padding: '12px 16px'
+        })
+    };
     return (
         <AppLayout>
             <Head title="Nouvelle Inscription" />
@@ -35,7 +74,7 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 Inscrire un élève dans une classe
                             </p>
                         </div>
-                        
+
                         <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
                             <span className="text-sm font-medium">Nouveau</span>
                         </div>
@@ -43,7 +82,7 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                    {/* Sélection de l'élève */}
+                    {/* Sélection de l'élève avec react-select */}
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -55,20 +94,15 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                             <label className="block text-sm font-semibold text-gray-700 mb-3">
                                 Élève *
                             </label>
-                            <select
-                                value={data.eleve_id}
-                                onChange={(e) => setData('eleve_id', e.target.value)}
-                                className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                    errors.eleve_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
-                            >
-                                <option value="">Sélectionnez un élève</option>
-                                {eleves.map((eleve) => (
-                                    <option key={eleve.id} value={eleve.id}>
-                                        {eleve.prenom} {eleve.nom}
-                                    </option>
-                                ))}
-                            </select>
+                            <Select
+                                options={eleveOptions}
+                                value={eleveOptions.find(opt => opt.value == data.eleve_id)}
+                                onChange={(selectedOption) => setData('eleve_id', selectedOption?.value || '')}
+                                placeholder="Rechercher un élève..."
+                                isClearable
+                                styles={customStyles}
+                                noOptionsMessage={() => "Aucun élève trouvé"}
+                            />
                             {errors.eleve_id && (
                                 <div className="flex items-center mt-2 text-red-600">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -96,9 +130,8 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 <select
                                     value={data.classe_id}
                                     onChange={(e) => setData('classe_id', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.classe_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
+                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.classe_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
+                                        } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
                                 >
                                     <option value="">Sélectionnez une classe</option>
                                     {classes.map((classe) => (
@@ -132,9 +165,8 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 <select
                                     value={data.annee_scolaire_id}
                                     onChange={(e) => setData('annee_scolaire_id', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.annee_scolaire_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
+                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.annee_scolaire_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
+                                        } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
                                 >
                                     <option value="">Sélectionnez une année scolaire</option>
                                     {anneesScolaires.map((annee) => (
@@ -172,9 +204,8 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                     type="date"
                                     value={data.date_inscription}
                                     onChange={(e) => setData('date_inscription', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.date_inscription ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
+                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.date_inscription ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
+                                        } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
                                 />
                                 {errors.date_inscription && (
                                     <div className="flex items-center mt-2 text-red-600">
@@ -223,8 +254,8 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 <div>
                                     <span className="font-medium text-blue-700">Élève :</span>
                                     <span className="ml-2 text-blue-900">
-                                        {data.eleve_id ? 
-                                            eleves.find(e => e.id == data.eleve_id)?.prenom + ' ' + 
+                                        {data.eleve_id ?
+                                            eleves.find(e => e.id == data.eleve_id)?.prenom + ' ' +
                                             eleves.find(e => e.id == data.eleve_id)?.nom
                                             : <span className="text-orange-500">Non sélectionné</span>
                                         }
@@ -233,7 +264,7 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 <div>
                                     <span className="font-medium text-blue-700">Classe :</span>
                                     <span className="ml-2 text-blue-900">
-                                        {data.classe_id ? 
+                                        {data.classe_id ?
                                             classes.find(c => c.id == data.classe_id)?.nom
                                             : <span className="text-orange-500">Non sélectionnée</span>
                                         }
@@ -242,7 +273,7 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 <div>
                                     <span className="font-medium text-blue-700">Année scolaire :</span>
                                     <span className="ml-2 text-blue-900">
-                                        {data.annee_scolaire_id ? 
+                                        {data.annee_scolaire_id ?
                                             anneesScolaires.find(a => a.id == data.annee_scolaire_id)?.nom
                                             : <span className="text-orange-500">Non sélectionnée</span>
                                         }
@@ -250,9 +281,8 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 </div>
                                 <div>
                                     <span className="font-medium text-blue-700">Statut :</span>
-                                    <span className={`ml-2 font-medium ${
-                                        data.statut === 'actif' ? 'text-green-600' : 'text-red-600'
-                                    }`}>
+                                    <span className={`ml-2 font-medium ${data.statut === 'actif' ? 'text-green-600' : 'text-red-600'
+                                        }`}>
                                         {data.statut === 'actif' ? 'Actif' : 'Inactif'}
                                     </span>
                                 </div>

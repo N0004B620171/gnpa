@@ -17,7 +17,7 @@ class NoteController extends Controller
     public function index(Request $request)
     {
         $query = Note::with([
-            'inscription.eleve', 
+            'inscription.eleve',
             'composition.trimestre.anneeScolaire',
             'composition.classe.niveau',
             'matiere'
@@ -25,7 +25,7 @@ class NoteController extends Controller
 
         // Filtres avancés
         if ($request->has('classe_id') && $request->classe_id != '') {
-            $query->whereHas('inscription', function($q) use ($request) {
+            $query->whereHas('inscription', function ($q) use ($request) {
                 $q->where('classe_id', $request->classe_id);
             });
         }
@@ -35,7 +35,7 @@ class NoteController extends Controller
         }
 
         if ($request->has('trimestre_id') && $request->trimestre_id != '') {
-            $query->whereHas('composition', function($q) use ($request) {
+            $query->whereHas('composition', function ($q) use ($request) {
                 $q->where('trimestre_id', $request->trimestre_id);
             });
         }
@@ -43,9 +43,9 @@ class NoteController extends Controller
         // Recherche par élève
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
-            $query->whereHas('inscription.eleve', function($q) use ($search) {
+            $query->whereHas('inscription.eleve', function ($q) use ($search) {
                 $q->where('prenom', 'LIKE', "%{$search}%")
-                  ->orWhere('nom', 'LIKE', "%{$search}%");
+                    ->orWhere('nom', 'LIKE', "%{$search}%");
             });
         }
 
@@ -70,8 +70,8 @@ class NoteController extends Controller
     public function create()
     {
         $compositions = Composition::with([
-            'trimestre.anneeScolaire', 
-            'classe.niveau', 
+            'trimestre.anneeScolaire',
+            'classe.niveau',
             'matieres',
             'classe.inscriptions.eleve'
         ])->whereHas('classe.inscriptions')->get();
@@ -85,8 +85,8 @@ class NoteController extends Controller
     public function createMultiple()
     {
         $compositions = Composition::with([
-            'trimestre.anneeScolaire', 
-            'classe.niveau', 
+            'trimestre.anneeScolaire',
+            'classe.niveau',
             'matieres',
             'classe.inscriptions.eleve'
         ])->whereHas('classe.inscriptions')->get();
@@ -105,7 +105,7 @@ class NoteController extends Controller
             'classe.inscriptions.eleve.parentEleve',
             'matieres',
             'trimestre.anneeScolaire',
-            'notes' => function($query) use ($matiereId) {
+            'notes' => function ($query) use ($matiereId) {
                 if ($matiereId) {
                     $query->where('matiere_id', $matiereId);
                 }
@@ -117,7 +117,7 @@ class NoteController extends Controller
         if ($matiereId) {
             $existingNotesQuery->where('matiere_id', $matiereId);
         }
-        
+
         $existingNotes = $existingNotesQuery->get()
             ->groupBy(['inscription_id', 'matiere_id'])
             ->toArray();
@@ -163,16 +163,15 @@ class NoteController extends Controller
         $request->validate([
             'composition_id' => 'required|exists:compositions,id',
             'matiere_id' => 'required|exists:matieres,id',
+            'sur' => 'required|numeric|min:1', // Validation globale
             'notes' => 'required|array',
             'notes.*.inscription_id' => 'required|exists:inscriptions,id',
             'notes.*.note' => 'required|numeric|min:0',
-            'notes.*.sur' => 'required|numeric|min:1',
             'notes.*.appreciation' => 'nullable|string|max:500'
         ]);
 
         $composition = Composition::find($request->composition_id);
-        
-        // Vérifier que la matière appartient à la composition
+
         if (!$composition->matieres->contains($request->matiere_id)) {
             return redirect()->back()
                 ->with('error', 'Cette matière n\'est pas incluse dans la composition');
@@ -185,14 +184,13 @@ class NoteController extends Controller
             $created = 0;
 
             foreach ($request->notes as $noteData) {
-                // Vérifier que l'élève appartient à la classe de la composition
                 $inscription = Inscription::find($noteData['inscription_id']);
                 if ($inscription->classe_id !== $composition->classe_id) {
                     continue;
                 }
 
-                // Ne traiter que les notes non vides
-                if ($noteData['note'] === '' || $noteData['note'] === null) {
+                // Utiliser le sur global
+                if ($noteData['note'] > $request->sur) {
                     continue;
                 }
 
@@ -205,7 +203,7 @@ class NoteController extends Controller
                 if ($existingNote) {
                     $existingNote->update([
                         'note' => $noteData['note'],
-                        'sur' => $noteData['sur'],
+                        'sur' => $request->sur, // Utiliser le sur global
                         'appreciation' => $noteData['appreciation'] ?? null
                     ]);
                     $updated++;
@@ -215,7 +213,7 @@ class NoteController extends Controller
                         'composition_id' => $request->composition_id,
                         'matiere_id' => $request->matiere_id,
                         'note' => $noteData['note'],
-                        'sur' => $noteData['sur'],
+                        'sur' => $request->sur, // Utiliser le sur global
                         'appreciation' => $noteData['appreciation'] ?? null
                     ]);
                     $created++;
@@ -227,7 +225,6 @@ class NoteController extends Controller
 
             return redirect()->route('notes.index')
                 ->with('success', "{$count} notes traitées avec succès ({$created} créées, {$updated} mises à jour)");
-
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()

@@ -154,11 +154,10 @@ const Index = ({ annees, filters, stats }) => {
                             <div className="flex bg-white/20 backdrop-blur-sm rounded-xl p-1">
                                 <button
                                     onClick={() => setViewMode('grid')}
-                                    className={`px-3 py-2 rounded-lg transition-all ${
-                                        viewMode === 'grid' 
-                                            ? 'bg-white text-indigo-600 shadow-sm' 
+                                    className={`px-3 py-2 rounded-lg transition-all ${viewMode === 'grid'
+                                            ? 'bg-white text-indigo-600 shadow-sm'
                                             : 'text-white hover:bg-white/10'
-                                    }`}
+                                        }`}
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -166,11 +165,10 @@ const Index = ({ annees, filters, stats }) => {
                                 </button>
                                 <button
                                     onClick={() => setViewMode('list')}
-                                    className={`px-3 py-2 rounded-lg transition-all ${
-                                        viewMode === 'list' 
-                                            ? 'bg-white text-indigo-600 shadow-sm' 
+                                    className={`px-3 py-2 rounded-lg transition-all ${viewMode === 'list'
+                                            ? 'bg-white text-indigo-600 shadow-sm'
                                             : 'text-white hover:bg-white/10'
-                                    }`}
+                                        }`}
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -249,73 +247,166 @@ const Index = ({ annees, filters, stats }) => {
                 {/* Filtres et Recherche */}
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-6 space-y-4 lg:space-y-0">
+                        {/* Champ de recherche principal */}
                         <div className="flex-1">
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
                                 </div>
                                 <input
                                     type="text"
-                                    placeholder="Rechercher une année scolaire..."
+                                    placeholder="Rechercher une année scolaire par nom..."
                                     value={search}
                                     onChange={(e) => handleSearch(e.target.value)}
-                                    className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
+                                    className="block w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 hover:border-gray-300"
                                 />
+                                {/* Bouton effacer intégré */}
+                                {search && (
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <button
+                                            onClick={() => handleSearch('')}
+                                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1.5 rounded-full hover:bg-indigo-50"
+                                            title="Effacer la recherche"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
+
+                        {/* Filtres avancés */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:w-2/3">
-                            <div>
+                            {/* Filtre statut */}
+                            <div className="relative">
                                 <select
                                     value={statut}
                                     onChange={(e) => handleFilterChange('statut', e.target.value)}
-                                    className="block w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
+                                    className="block w-full pl-4 pr-10 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 appearance-none hover:border-gray-300"
                                 >
-                                    <option value="">Tous les statuts</option>
-                                    <option value="actif">Actives</option>
-                                    <option value="inactif">Inactives</option>
+                                    <option value="">📊 Tous les statuts</option>
+                                    <option value="actif">🟢 Actives</option>
+                                    <option value="inactif">⚪ Inactives</option>
                                 </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
                             </div>
-                            <div>
+
+                            {/* Filtre période */}
+                            <div className="relative">
                                 <select
                                     value={periode}
                                     onChange={(e) => handleFilterChange('periode', e.target.value)}
-                                    className="block w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
+                                    className="block w-full pl-4 pr-10 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 appearance-none hover:border-gray-300"
                                 >
-                                    <option value="">Toutes les périodes</option>
-                                    <option value="passees">Passées</option>
-                                    <option value="courantes">En cours</option>
-                                    <option value="futures">Futures</option>
+                                    <option value="">📅 Toutes les périodes</option>
+                                    <option value="passees">⏪ Passées</option>
+                                    <option value="courantes">🎯 En cours</option>
+                                    <option value="futures">⏩ Futures</option>
                                 </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
                             </div>
-                            <div>
+
+                            {/* Filtre pagination */}
+                            <div className="relative">
                                 <select
                                     value={perPage}
                                     onChange={(e) => handleFilterChange('perPage', e.target.value)}
-                                    className="block w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200"
+                                    className="block w-full pl-4 pr-10 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 appearance-none hover:border-gray-300"
                                 >
-                                    <option value="10">10 par page</option>
-                                    <option value="20">20 par page</option>
-                                    <option value="50">50 par page</option>
+                                    <option value="10">📄 10 par page</option>
+                                    <option value="20">📄 20 par page</option>
+                                    <option value="50">📄 50 par page</option>
                                 </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    {/* Bouton réinitialiser */}
                     {hasActiveFilters && (
                         <div className="mt-4 flex justify-end">
                             <button
                                 onClick={clearFilters}
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-all duration-200 group"
                             >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
                                 Réinitialiser les filtres
                             </button>
                         </div>
                     )}
                 </div>
+
+                {/* Indicateurs de filtres actifs */}
+                {(search || statut || periode) && (
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-6">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <span className="text-sm font-semibold text-indigo-800 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                Filtres actifs :
+                            </span>
+
+                            {search && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-indigo-800 flex items-center gap-2 border border-indigo-200 shadow-sm">
+                                    <span className="font-medium">Recherche:</span> "{search}"
+                                    <button
+                                        onClick={() => handleSearch('')}
+                                        className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer la recherche"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+
+                            {statut && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-indigo-800 flex items-center gap-2 border border-indigo-200 shadow-sm">
+                                    <span className="font-medium">Statut:</span> {statut === 'actif' ? 'Actives' : 'Inactives'}
+                                    <button
+                                        onClick={() => handleFilterChange('statut', '')}
+                                        className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer le filtre statut"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+
+                            {periode && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-indigo-800 flex items-center gap-2 border border-indigo-200 shadow-sm">
+                                    <span className="font-medium">Période:</span>
+                                    {periode === 'passees' ? 'Passées' : periode === 'courantes' ? 'En cours' : 'Futures'}
+                                    <button
+                                        onClick={() => handleFilterChange('periode', '')}
+                                        className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer le filtre période"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Liste des Années Scolaires */}
                 {viewMode === 'grid' ? (
@@ -553,8 +644,8 @@ const Index = ({ annees, filters, stats }) => {
                         </div>
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucune année scolaire trouvée</h3>
                         <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                            {hasActiveFilters 
-                                ? 'Aucune année scolaire ne correspond à vos critères de recherche.' 
+                            {hasActiveFilters
+                                ? 'Aucune année scolaire ne correspond à vos critères de recherche.'
                                 : 'Commencez par créer votre première année scolaire.'
                             }
                         </p>
@@ -596,10 +687,10 @@ const Index = ({ annees, filters, stats }) => {
                                     onClick={() => router.get(link.url || '#')}
                                     disabled={!link.url}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${link.active
-                                            ? 'bg-gradient-to-r from-indigo-600 to-purple-700 text-white shadow-lg'
-                                            : link.url
-                                                ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-500 hover:text-indigo-600'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        ? 'bg-gradient-to-r from-indigo-600 to-purple-700 text-white shadow-lg'
+                                        : link.url
+                                            ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-500 hover:text-indigo-600'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                         }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />

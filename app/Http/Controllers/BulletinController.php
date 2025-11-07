@@ -7,10 +7,12 @@ use App\Models\Inscription;
 use App\Models\Trimestre;
 use App\Models\AnneeScolaire;
 use App\Models\Classe;
+use App\Models\Composition;
 use App\Helpers\BulletinHelper;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\DB;
 
 class BulletinController extends Controller
 {
@@ -25,27 +27,34 @@ class BulletinController extends Controller
         // Filtres
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('eleve_nom', 'like', "%{$search}%")
-                  ->orWhere('classe_nom', 'like', "%{$search}%")
-                  ->orWhere('niveau_nom', 'like', "%{$search}%");
+                    ->orWhere('classe_nom', 'like', "%{$search}%")
+                    ->orWhere('niveau_nom', 'like', "%{$search}%");
             });
         }
 
-        if ($request->has('annee_scolaire_id') && $request->annee_scolaire_id) {
-            $anneeScolaire = AnneeScolaire::find($request->annee_scolaire_id);
-            if ($anneeScolaire) {
-                $query->where('annee_scolaire_nom', $anneeScolaire->nom);
-            }
+        if ($request->has('classe_id') && $request->classe_id) {
+            $query->whereHas('inscription.classe', function ($q) use ($request) {
+                $q->where('id', $request->classe_id);
+            });
         }
 
         if ($request->has('trimestre_id') && $request->trimestre_id) {
             $query->where('trimestre_id', $request->trimestre_id);
         }
 
-        if ($request->has('classe_id') && $request->classe_id) {
-            $query->whereHas('inscription.classe', function($q) use ($request) {
-                $q->where('id', $request->classe_id);
+        if ($request->has('annee_scolaire_id') && $request->annee_scolaire_id) {
+            $query->whereHas('trimestre.anneeScolaire', function ($q) use ($request) {
+                $q->where('id', $request->annee_scolaire_id);
+            });
+        }
+
+        if ($request->has('composition_id') && $request->composition_id) {
+            $query->whereHas('details', function ($q) use ($request) {
+                $q->whereHas('matiere.compositions', function ($q2) use ($request) {
+                    $q2->where('compositions.id', $request->composition_id);
+                });
             });
         }
 
@@ -53,41 +62,86 @@ class BulletinController extends Controller
             $query->where('annuel', $request->boolean('annuel'));
         }
 
-        // Tri
-        $sortField = $request->get('sort_field', 'created_at');
-        $sortDirection = $request->get('sort_direction', 'desc');
-        $query->orderBy($sortField, $sortDirection);
-
-        $bulletins = $query->paginate($request->get('per_page', 20))
+        $bulletins = $query->latest()->paginate($request->get('per_page', 20))
             ->withQueryString();
 
         // Calcul des statistiques
-        $statsQuery = Bulletin::query();
-        if ($request->has('annee_scolaire_id') && $request->annee_scolaire_id) {
-            $anneeScolaire = AnneeScolaire::find($request->annee_scolaire_id);
-            if ($anneeScolaire) {
-                $statsQuery->where('annee_scolaire_nom', $anneeScolaire->nom);
-            }
-        }
+        $stats = [
+            'total' => Bulletin::count(),
+            'trimestriels' => Bulletin::where('annuel', false)->count(),
+            'annuels' => Bulletin::where('annuel', true)->count(),
+            'moyenne_generale' => Bulletin::avg('moyenne_eleve') ?? 0,
+        ];
 
-        $stats = $statsQuery->selectRaw('
-            COUNT(*) as total_bulletins,
-            AVG(moyenne_eleve) as moyenne_generale,
-            AVG(moyenne_classe) as moyenne_classe_generale,
-            SUM(CASE WHEN moyenne_eleve >= 10 THEN 1 ELSE 0 END) as admis,
-            SUM(CASE WHEN moyenne_eleve < 10 THEN 1 ELSE 0 END) as non_admis
-        ')->first();
+        // Charger les données pour les filtres
+        $compositions = Composition::with('classe')->get();
 
         return Inertia::render('Bulletins/Index', [
             'bulletins' => $bulletins,
             'classes' => Classe::with('niveau')->get(),
             'trimestres' => Trimestre::with('anneeScolaire')->get(),
             'anneesScolaires' => AnneeScolaire::all(),
+            'compositions' => $compositions,
             'filters' => $request->only([
-                'search', 'classe_id', 'trimestre_id', 'annee_scolaire_id', 'annuel', 'perPage'
+                'search',
+                'classe_id',
+                'trimestre_id',
+                'annee_scolaire_id',
+                'composition_id',
+                'annuel',
+                'perPage'
             ]),
             'stats' => $stats
         ]);
+    }
+
+    public function bulkDownload(Request $request)
+    {
+        $query = Bulletin::with([
+            'inscription.eleve',
+            'inscription.classe.niveau',
+            'trimestre.anneeScolaire',
+            'details.matiere'
+        ]);
+
+        // Appliquer les mêmes filtres que pour l'index
+        if ($request->has('classe_id') && $request->classe_id) {
+            $query->whereHas('inscription.classe', function ($q) use ($request) {
+                $q->where('id', $request->classe_id);
+            });
+        }
+
+        if ($request->has('trimestre_id') && $request->trimestre_id) {
+            $query->where('trimestre_id', $request->trimestre_id);
+        }
+
+        if ($request->has('composition_id') && $request->composition_id) {
+            $query->whereHas('details', function ($q) use ($request) {
+                $q->whereHas('matiere.compositions', function ($q2) use ($request) {
+                    $q2->where('compositions.id', $request->composition_id);
+                });
+            });
+        }
+
+        if ($request->has('annuel')) {
+            $query->where('annuel', $request->boolean('annuel'));
+        }
+
+        // Téléchargement par IDs spécifiques
+        if ($request->has('ids')) {
+            $ids = explode(',', $request->ids);
+            $query->whereIn('id', $ids);
+        }
+
+        $bulletins = $query->get();
+
+        $format = $request->get('format', 'pdf');
+
+        if ($format === 'excel') {
+            return BulletinHelper::generateExcel($bulletins);
+        }
+
+        return BulletinHelper::generateBulkPDF($bulletins);
     }
 
     public function show(Bulletin $bulletin): Response

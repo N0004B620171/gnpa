@@ -230,4 +230,76 @@ class BulletinHelper
 
         return $dompdf->stream($filename, ['Attachment' => true]);
     }
+
+    public static function generateBulkPDF($bulletins)
+{
+    if ($bulletins->isEmpty()) {
+        throw new \Exception("Aucun bulletin à imprimer.");
+    }
+
+    $options = new \Dompdf\Options();
+    $options->set('isHtml5ParserEnabled', true);
+    $options->set('isRemoteEnabled', true);
+    $options->set('defaultFont', 'DejaVu Sans');
+
+    $dompdf = new \Dompdf\Dompdf($options);
+
+    $schoolInfo = [
+        'nom' => config('app.school_name', 'École Moderne'),
+        'adresse' => config('app.school_address', '123 Rue de l\'Éducation'),
+        'telephone' => config('app.school_phone', '+221 77 000 00 00'),
+        'logo' => public_path('images/logo.png'),
+        'directeur' => config('app.school_director', 'Le Directeur'),
+    ];
+
+    // ✅ Encodage du logo en base64
+    if (file_exists($schoolInfo['logo'])) {
+        $schoolInfo['logo'] = 'data:image/png;base64,' . base64_encode(file_get_contents($schoolInfo['logo']));
+    } else {
+        $schoolInfo['logo'] = null;
+    }
+
+    // ✅ Construire un seul document HTML propre
+    $html = '<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Bulletins groupés</title>
+<style>
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 12px; color: #222; margin: 25px; }
+    div.page-break { page-break-after: always; }
+</style>
+</head>
+<body>';
+
+    foreach ($bulletins as $index => $bulletin) {
+        $bulletin->loadMissing(['details.matiere', 'inscription.eleve', 'inscription.classe.niveau']);
+
+        // 🔹 Rendu partiel du contenu du bulletin sans balises <html>/<body>
+        $content = view('pdf.bulletin', compact('bulletin', 'schoolInfo'))->render();
+
+        // Supprime les DOCTYPE et <html>/<body> si la vue les contient
+        $content = preg_replace('/<!DOCTYPE.*?>|<html.*?>|<\/html>|<body.*?>|<\/body>/is', '', $content);
+
+        $html .= $content;
+
+        // Ajoute un saut de page sauf pour le dernier
+        if ($index < count($bulletins) - 1) {
+            $html .= '<div class="page-break"></div>';
+        }
+    }
+
+    $html .= '</body></html>';
+
+    // 🧠 Pour debug
+    // file_put_contents(storage_path('app/bulletins-groupes.html'), $html);
+
+    $dompdf->loadHtml($html, 'UTF-8');
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    $filename = 'bulletins-groupes-' . date('Y-m-d') . '.pdf';
+    return $dompdf->stream($filename, ['Attachment' => false]);
+}
+
 }

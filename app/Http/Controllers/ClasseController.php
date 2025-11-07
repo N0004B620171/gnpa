@@ -43,6 +43,13 @@ class ClasseController extends Controller
             $query->where('niveau_id', $request->niveau_id);
         }
 
+        // Nouveau filtre : par cycle
+        if ($request->has('cycle_id') && $request->cycle_id != '') {
+            $query->whereHas('niveau', function ($q) use ($request) {
+                $q->where('cycle_id', $request->cycle_id);
+            });
+        }
+
         $perPage = $request->get('perPage', 10);
         $classes = $query->paginate($perPage);
 
@@ -52,6 +59,7 @@ class ClasseController extends Controller
             'filters' => [
                 'search' => $request->search,
                 'niveau_id' => $request->niveau_id,
+                'cycle_id' => $request->cycle_id,
                 'perPage' => $perPage
             ]
         ]);
@@ -173,7 +181,7 @@ class ClasseController extends Controller
             'busUtilises' => $busUtilises,
             'itineraires' => $itineraires,
             'anneesScolaires' => $anneesScolaires,
-            'inventaires' => $inventaires 
+            'inventaires' => $inventaires
         ]);
     }
 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import Select from 'react-select';
 
 const Create = ({ trimestres, classes, matieres }) => {
     const { data, setData, post, processing, errors } = useForm({
@@ -9,40 +10,153 @@ const Create = ({ trimestres, classes, matieres }) => {
         nom: '',
         date: '',
         langue: 'fr',
-        matieres: [] // Ceci doit être un tableau
+        is_controle: false,
+        matieres: []
     });
 
     const [selectedMatieres, setSelectedMatieres] = useState([]);
 
+    // Préparer les options pour react-select
+    const trimestreOptions = useMemo(() => [
+        { value: '', label: 'Sélectionner un trimestre' },
+        ...trimestres.map((trimestre) => ({
+            value: trimestre.id,
+            label: trimestre.nom,
+            ...trimestre
+        }))
+    ], [trimestres]);
+
+    const classeOptions = useMemo(() => [
+        { value: '', label: 'Sélectionner une classe' },
+        ...classes.map((classe) => ({
+            value: classe.id,
+            label: classe.nom,
+            ...classe
+        }))
+    ], [classes]);
+
+    const langueOptions = [
+        { value: 'fr', label: 'Français' },
+        { value: 'en', label: 'Anglais' },
+        { value: 'ar', label: 'Arabe' }
+    ];
+
+    // Préparer les options pour le multi-select des matières
+    const matiereOptions = useMemo(() => {
+        let filteredMatieres = matieres;
+        return filteredMatieres.map((matiere) => ({
+            value: matiere.id,
+            label: `${matiere.nom} (Coef. ${matiere.coefficient})`,
+            coefficient: matiere.coefficient,
+            niveau: matiere.niveau,
+            professeur: matiere.professeur,
+            ...matiere
+        }));
+    }, [matieres, classes, data.classe_id]);
+
+    // Styles personnalisés pour react-select
+    const customStyles = {
+        control: (base, state) => ({
+            ...base,
+            minHeight: '56px',
+            borderRadius: '12px',
+            border: `2px solid ${state.isFocused ? '#3b82f6' : errors[state.name] ? '#ef4444' : '#e5e7eb'}`,
+            boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.2)' : 'none',
+            '&:hover': {
+                borderColor: state.isFocused ? '#3b82f6' : errors[state.name] ? '#ef4444' : '#d1d5db'
+            },
+            backgroundColor: 'white'
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#dbeafe' : 'white',
+            color: state.isSelected ? 'white' : '#1f2937',
+            padding: '12px 16px',
+            fontSize: '14px',
+            '&:active': {
+                backgroundColor: state.isSelected ? '#3b82f6' : '#bfdbfe'
+            }
+        }),
+        menu: (base) => ({
+            ...base,
+            borderRadius: '12px',
+            border: '2px solid #e5e7eb',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            zIndex: 50
+        }),
+        menuList: (base) => ({
+            ...base,
+            borderRadius: '10px',
+            padding: '4px'
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#6b7280',
+            fontSize: '14px'
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#1f2937',
+            fontSize: '14px',
+            fontWeight: '500'
+        }),
+        multiValue: (base) => ({
+            ...base,
+            backgroundColor: '#e0e7ff',
+            borderRadius: '8px',
+        }),
+        multiValueLabel: (base) => ({
+            ...base,
+            color: '#3730a3',
+            fontWeight: '500',
+            fontSize: '13px'
+        }),
+        multiValueRemove: (base) => ({
+            ...base,
+            color: '#6366f1',
+            ':hover': {
+                backgroundColor: '#6366f1',
+                color: 'white'
+            }
+        }),
+        indicatorSeparator: () => ({
+            display: 'none'
+        }),
+        dropdownIndicator: (base, state) => ({
+            ...base,
+            color: state.isFocused ? '#3b82f6' : '#6b7280',
+            '&:hover': {
+                color: '#3b82f6'
+            }
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#ef4444'
+            }
+        })
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log('Données envoyées:', data); // Debug
+        console.log('Données envoyées:', data);
         post('/compositions');
     };
 
-    const handleMatiereToggle = (matiereId) => {
-        const newSelection = selectedMatieres.includes(matiereId)
-            ? selectedMatieres.filter(id => id !== matiereId)
-            : [...selectedMatieres, matiereId];
-        
-        setSelectedMatieres(newSelection);
-        setData('matieres', newSelection); // Mettre à jour le tableau matieres
+    const handleMatiereChange = (selectedOptions) => {
+        const selectedIds = selectedOptions ? selectedOptions.map(option => option.value) : [];
+        setSelectedMatieres(selectedOptions || []);
+        setData('matieres', selectedIds);
     };
 
-    // Filtrer les matières selon la classe sélectionnée
-    const filteredMatieres = matieres.filter(matiere => {
-        if (!data.classe_id) return true;
-        
-        // Trouver la classe sélectionnée
-        const selectedClasse = classes.find(c => c.id == data.classe_id);
-        if (!selectedClasse) return true;
-        
-        // Si la matière n'a pas de niveau_id, elle est disponible pour toutes les classes
-        if (!matiere.niveau_id) return true;
-        
-        // Vérifier si le niveau de la matière correspond au niveau de la classe
-        return matiere.niveau_id == selectedClasse.niveau_id;
-    });
+
+
+
+    // Valeurs sélectionnées pour react-select
+    const selectedTrimestre = trimestreOptions.find(opt => opt.value == data.trimestre_id) || null;
+    const selectedClasse = classeOptions.find(opt => opt.value == data.classe_id) || null;
+    const selectedLangue = langueOptions.find(opt => opt.value == data.langue) || langueOptions[0];
 
     return (
         <AppLayout>
@@ -63,7 +177,7 @@ const Create = ({ trimestres, classes, matieres }) => {
                                 Organisez une nouvelle évaluation pour une classe
                             </p>
                         </div>
-                        
+
                         <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
                             <span className="text-sm font-medium">Nouveau</span>
                         </div>
@@ -79,7 +193,8 @@ const Create = ({ trimestres, classes, matieres }) => {
                             </svg>
                             Informations de la composition
                         </h3>
-                        
+
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -89,9 +204,8 @@ const Create = ({ trimestres, classes, matieres }) => {
                                     type="text"
                                     value={data.nom}
                                     onChange={(e) => setData('nom', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.nom ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
+                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.nom ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
+                                        } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
                                     placeholder="Ex: Composition de Mathématiques, Examen de Français..."
                                 />
                                 {errors.nom && (
@@ -106,44 +220,56 @@ const Create = ({ trimestres, classes, matieres }) => {
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                                    Date *
+                                    Type de composition
                                 </label>
-                                <input
-                                    type="date"
-                                    value={data.date}
-                                    onChange={(e) => setData('date', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.date ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
-                                />
-                                {errors.date && (
-                                    <div className="flex items-center mt-2 text-red-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span className="text-sm">{errors.date}</span>
-                                    </div>
-                                )}
+                                <div className="flex space-x-4 mt-2">
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="is_controle"
+                                            checked={!data.is_controle}
+                                            onChange={() => setData('is_controle', false)}
+                                            className="hidden"
+                                        />
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-2 ${!data.is_controle ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                                            }`}>
+                                            {!data.is_controle && (
+                                                <div className="w-2 h-2 rounded-full bg-white"></div>
+                                            )}
+                                        </div>
+                                        <span className="text-gray-700">Composition normale</span>
+                                    </label>
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="is_controle"
+                                            checked={data.is_controle}
+                                            onChange={() => setData('is_controle', true)}
+                                            className="hidden"
+                                        />
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-2 ${data.is_controle ? 'border-green-500 bg-green-500' : 'border-gray-300'
+                                            }`}>
+                                            {data.is_controle && (
+                                                <div className="w-2 h-2 rounded-full bg-white"></div>
+                                            )}
+                                        </div>
+                                        <span className="text-gray-700">Contrôle continu</span>
+                                    </label>
+                                </div>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Trimestre *
                                 </label>
-                                <select
-                                    value={data.trimestre_id}
-                                    onChange={(e) => setData('trimestre_id', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.trimestre_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
-                                >
-                                    <option value="">Sélectionner un trimestre</option>
-                                    {trimestres.map((trimestre) => (
-                                        <option key={trimestre.id} value={trimestre.id}>
-                                            {trimestre.nom}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    options={trimestreOptions}
+                                    value={selectedTrimestre}
+                                    onChange={(selectedOption) => setData('trimestre_id', selectedOption?.value || '')}
+                                    styles={customStyles}
+                                    isClearable
+                                    placeholder="Sélectionner un trimestre"
+                                />
                                 {errors.trimestre_id && (
                                     <div className="flex items-center mt-2 text-red-600">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -158,25 +284,19 @@ const Create = ({ trimestres, classes, matieres }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Classe *
                                 </label>
-                                <select
-                                    value={data.classe_id}
-                                    onChange={(e) => {
-                                        setData('classe_id', e.target.value);
+                                <Select
+                                    options={classeOptions}
+                                    value={selectedClasse}
+                                    onChange={(selectedOption) => {
+                                        setData('classe_id', selectedOption?.value || '');
                                         // Réinitialiser les matières sélectionnées quand la classe change
                                         setSelectedMatieres([]);
                                         setData('matieres', []);
                                     }}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.classe_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
-                                >
-                                    <option value="">Sélectionner une classe</option>
-                                    {classes.map((classe) => (
-                                        <option key={classe.id} value={classe.id}>
-                                            {classe.nom}
-                                        </option>
-                                    ))}
-                                </select>
+                                    styles={customStyles}
+                                    isClearable
+                                    placeholder="Sélectionner une classe"
+                                />
                                 {errors.classe_id && (
                                     <div className="flex items-center mt-2 text-red-600">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -191,15 +311,13 @@ const Create = ({ trimestres, classes, matieres }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Langue *
                                 </label>
-                                <select
-                                    value={data.langue}
-                                    onChange={(e) => setData('langue', e.target.value)}
-                                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white"
-                                >
-                                    <option value="fr">Français</option>
-                                    <option value="en">Anglais</option>
-                                    <option value="ar">Arabe</option>
-                                </select>
+                                <Select
+                                    options={langueOptions}
+                                    value={selectedLangue}
+                                    onChange={(selectedOption) => setData('langue', selectedOption?.value || 'fr')}
+                                    styles={customStyles}
+                                    isSearchable={false}
+                                />
                                 {errors.langue && (
                                     <div className="flex items-center mt-2 text-red-600">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -232,65 +350,62 @@ const Create = ({ trimestres, classes, matieres }) => {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredMatieres.map((matiere) => (
-                                <div
-                                    key={matiere.id}
-                                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
-                                        selectedMatieres.includes(matiere.id)
-                                            ? 'border-purple-500 bg-purple-50 shadow-md'
-                                            : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                                    }`}
-                                    onClick={() => handleMatiereToggle(matiere.id)}
-                                >
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <h4 className="font-semibold text-gray-900">{matiere.nom}</h4>
-                                            <div className="flex items-center mt-2 space-x-2">
-                                                <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                                                    Coef. {matiere.coefficient}
-                                                </span>
-                                                {matiere.niveau && (
-                                                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded-full">
-                                                        {matiere.niveau.nom}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {matiere.professeur && (
-                                                <p className="text-xs text-gray-500 mt-2">
-                                                    Prof: {matiere.professeur.prenom} {matiere.professeur.nom}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                            selectedMatieres.includes(matiere.id)
-                                                ? 'bg-purple-500 border-purple-500'
-                                                : 'border-gray-300'
-                                        }`}>
-                                            {selectedMatieres.includes(matiere.id) && (
-                                                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                </svg>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {filteredMatieres.length === 0 && data.classe_id && (
-                            <div className="text-center py-8 text-gray-500">
+                        {!data.classe_id ? (
+                            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                                 <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
-                                <p>Aucune matière disponible pour cette classe</p>
-                                <p className="text-sm mt-1">Les matières doivent être associées au niveau de la classe sélectionnée</p>
+                                <p className="text-lg font-medium">Veuillez d'abord sélectionner une classe</p>
+                                <p className="text-sm mt-1">Les matières disponibles s'afficheront automatiquement</p>
                             </div>
-                        )}
-
-                        {!data.classe_id && (
-                            <div className="text-center py-8 text-gray-500">
-                                <p>Veuillez d'abord sélectionner une classe pour voir les matières disponibles</p>
+                        ) : matiereOptions.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                                <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                                <p className="text-lg font-medium">Aucune matière disponible</p>
+                                <p className="text-sm mt-1">Aucune matière n'est associée au niveau de cette classe</p>
+                            </div>
+                        ) : (
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                                    Sélectionnez les matières *
+                                </label>
+                                <Select
+                                    options={matiereOptions}
+                                    value={selectedMatieres}
+                                    onChange={handleMatiereChange}
+                                    styles={customStyles}
+                                    isMulti
+                                    isSearchable
+                                    placeholder="Recherchez et sélectionnez les matières..."
+                                    noOptionsMessage={() => "Aucune matière trouvée"}
+                                    formatOptionLabel={({ label, coefficient, niveau, professeur }) => (
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <div className="font-medium">{label.split(' (Coef.')[0]}</div>
+                                                <div className="text-xs text-gray-500 flex space-x-2 mt-1">
+                                                    {niveau && (
+                                                        <span className="bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">
+                                                            {niveau.nom}
+                                                        </span>
+                                                    )}
+                                                    {professeur && (
+                                                        <span className="text-gray-600">
+                                                            Prof: {professeur.prenom} {professeur.nom}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <span className="text-sm font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                                                Coef. {coefficient}
+                                            </span>
+                                        </div>
+                                    )}
+                                />
+                                <div className="mt-2 text-sm text-gray-500">
+                                    {selectedMatieres.length} matière(s) sélectionnée(s)
+                                </div>
                             </div>
                         )}
                     </div>
@@ -314,6 +429,8 @@ const Create = ({ trimestres, classes, matieres }) => {
                                             {data.date && `Date: ${new Date(data.date).toLocaleDateString('fr-FR')}`}
                                             {data.trimestre_id && ` • ${trimestres.find(t => t.id == data.trimestre_id)?.nom}`}
                                             {data.classe_id && ` • ${classes.find(c => c.id == data.classe_id)?.nom}`}
+                                            {` • ${selectedLangue.label}`}
+                                            {data.is_controle && ` • Contrôle continu`}
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -323,20 +440,17 @@ const Create = ({ trimestres, classes, matieres }) => {
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {selectedMatieres.length > 0 && (
                                     <div className="bg-white rounded-xl border border-blue-100 p-4">
                                         <h5 className="text-sm font-semibold text-blue-900 mb-2">Matières sélectionnées :</h5>
                                         <div className="space-y-2 text-sm">
-                                            {selectedMatieres.map(matiereId => {
-                                                const matiere = matieres.find(m => m.id == matiereId);
-                                                return matiere ? (
-                                                    <div key={matiere.id} className="flex justify-between items-center py-1">
-                                                        <span className="text-blue-700">{matiere.nom}</span>
-                                                        <span className="text-blue-600">Coef. {matiere.coefficient}</span>
-                                                    </div>
-                                                ) : null;
-                                            })}
+                                            {selectedMatieres.map(matiere => (
+                                                <div key={matiere.value} className="flex justify-between items-center py-1">
+                                                    <span className="text-blue-700">{matiere.label.split(' (Coef.')[0]}</span>
+                                                    <span className="text-blue-600">Coef. {matiere.coefficient}</span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
@@ -379,7 +493,7 @@ const Create = ({ trimestres, classes, matieres }) => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                     <span className="font-semibold">
-                                        Créer la composition ({selectedMatieres.length} matière{selectedMatieres.length > 1 ? 's' : ''})
+                                        {`Créer la composition (${selectedMatieres.length} matière${selectedMatieres.length > 1 ? 's' : ''})`}
                                     </span>
                                 </>
                             )}

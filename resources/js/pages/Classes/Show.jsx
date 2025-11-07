@@ -8,7 +8,35 @@ const Show = ({ classe, eleves, factures, serviceCiblages, services, affectation
     const [showServiceModal, setShowServiceModal] = useState(false);
     const [showExcelModal, setShowExcelModal] = useState(false);
     const [showGenererFacturesModal, setShowGenererFacturesModal] = useState(false);
+    const [showInscriptionModal, setShowInscriptionModal] = useState(false);
+    const [elevesDisponibles, setElevesDisponibles] = useState([]);
+    const [loadingEleves, setLoadingEleves] = useState(false);
 
+    const chargerElevesDisponibles = async () => {
+        setLoadingEleves(true);
+        try {
+            const response = await fetch(`/api/classes/${classe.id}/eleves-disponibles`);
+            const data = await response.json();
+            setElevesDisponibles(data.eleves || []);
+        } catch (error) {
+            console.error('Erreur lors du chargement des élèves disponibles:', error);
+            setElevesDisponibles([]);
+        } finally {
+            setLoadingEleves(false);
+        }
+    };
+
+    // Ouvrir la modal d'inscription
+    const handleOpenInscriptionModal = () => {
+        chargerElevesDisponibles();
+        setShowInscriptionModal(true);
+    };
+
+    // Callback après inscription réussie
+    const handleInscriptionSuccess = () => {
+        // Recharger la page pour mettre à jour la liste des élèves
+        router.reload();
+    };
     const { data: serviceData, setData: setServiceData, post: postService, processing: serviceProcessing, reset: resetService } = useForm({
         service_id: ''
     });

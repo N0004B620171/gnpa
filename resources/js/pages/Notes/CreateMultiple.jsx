@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import Select from 'react-select';
 
-const CreateMultiple = ({ compositions, classes, flash }) => {
+const CreateMultiple = ({ compositions, classes, flash, filters = {} }) => {
     const { data, setData, post, processing, errors, reset } = useForm({
-        composition_id: '',
-        matiere_id: '',
+        composition_id: filters.composition_id || '',
+        matiere_id: filters.matiere_id || '',
+        sur: 20, // Valeur par défaut
         notes: []
     });
 
@@ -15,6 +17,93 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
     const [existingNotes, setExistingNotes] = useState({});
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
+    const [noteErrors, setNoteErrors] = useState({});
+
+    // Préparer les options pour les filtres
+    const compositionOptions = useMemo(() => [
+        { value: '', label: 'Sélectionnez une composition' },
+        ...compositions.map((composition) => ({
+            value: composition.id,
+            label: `${composition.nom} - ${composition.classe?.nom} (${composition.trimestre?.annee_scolaire?.nom})`,
+            ...composition
+        }))
+    ], [compositions]);
+
+    // Préparer les options pour les matières
+    const matiereOptions = useMemo(() => [
+        { value: '', label: 'Sélectionnez une matière' },
+        ...availableMatieres.map((matiere) => ({
+            value: matiere.id,
+            label: `${matiere.nom} (Coef. ${matiere.coefficient})`,
+            coefficient: matiere.coefficient,
+            ...matiere
+        }))
+    ], [availableMatieres]);
+
+    // Styles personnalisés pour react-select
+    const customStyles = {
+        control: (base, state) => ({
+            ...base,
+            minHeight: '56px',
+            borderRadius: '12px',
+            border: `2px solid ${state.isFocused ? '#3b82f6' : errors[state.name] ? '#ef4444' : '#e5e7eb'}`,
+            boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.2)' : 'none',
+            '&:hover': {
+                borderColor: state.isFocused ? '#3b82f6' : errors[state.name] ? '#ef4444' : '#d1d5db'
+            },
+            backgroundColor: 'white'
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#dbeafe' : 'white',
+            color: state.isSelected ? 'white' : '#1f2937',
+            padding: '12px 16px',
+            fontSize: '14px',
+            '&:active': {
+                backgroundColor: state.isSelected ? '#3b82f6' : '#bfdbfe'
+            }
+        }),
+        menu: (base) => ({
+            ...base,
+            borderRadius: '12px',
+            border: '2px solid #e5e7eb',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            zIndex: 50
+        }),
+        menuList: (base) => ({
+            ...base,
+            borderRadius: '10px',
+            padding: '4px'
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#6b7280',
+            fontSize: '14px'
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#1f2937',
+            fontSize: '14px',
+            fontWeight: '500'
+        }),
+        indicatorSeparator: () => ({
+            display: 'none'
+        }),
+        dropdownIndicator: (base, state) => ({
+            ...base,
+            color: state.isFocused ? '#3b82f6' : '#6b7280',
+            '&:hover': {
+                color: '#3b82f6'
+            }
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#ef4444'
+            }
+        })
+    };
 
     // Charger les données de la composition
     useEffect(() => {
@@ -22,11 +111,11 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
             setLoading(true);
             const composition = compositions.find(c => c.id == data.composition_id);
             setSelectedComposition(composition);
-            
+
             if (composition) {
                 setAvailableMatieres(composition.matieres || []);
                 setData('matiere_id', '');
-                
+
                 // Charger les élèves et notes existantes
                 fetchCompositionData(composition.id);
             }
@@ -37,10 +126,10 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
         try {
             const response = await fetch(`/notes/composition-data/${compositionId}?matiere_id=${data.matiere_id}`);
             const result = await response.json();
-            
+
             setAvailableEleves(result.composition.classe.inscriptions || []);
             setExistingNotes(result.existingNotes || {});
-            
+
             // Initialiser les notes
             initializeNotes(result.composition.classe.inscriptions || []);
         } catch (error) {
@@ -57,7 +146,6 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
             return {
                 inscription_id: inscription.id,
                 note: existingNote ? existingNote.note : '',
-                sur: existingNote ? existingNote.sur : 20,
                 appreciation: existingNote ? existingNote.appreciation : ''
             };
         });
@@ -71,19 +159,87 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
         }
     }, [data.matiere_id]);
 
+    const validateNote = (noteValue, surValue) => {
+        if (noteValue === '') return null;
+
+        const note = parseFloat(noteValue);
+        const sur = parseFloat(surValue);
+
+        if (isNaN(note) || isNaN(sur)) {
+            return 'Note invalide';
+        }
+
+        if (note < 0) {
+            return 'La note ne peut pas être négative';
+        }
+
+        if (note > sur) {
+            return `La note ne peut pas dépasser ${sur}`;
+        }
+
+        return null;
+    };
+
+    const updateNote = (index, field, value) => {
+        const updatedNotes = [...data.notes];
+        updatedNotes[index][field] = value;
+
+        // Valider la note si c'est le champ note qui est modifié
+        if (field === 'note' && value !== '') {
+            const error = validateNote(value, data.sur);
+            setNoteErrors(prev => ({
+                ...prev,
+                [index]: error
+            }));
+        }
+
+        setData('notes', updatedNotes);
+    };
+
+    const updateSur = (value) => {
+        const surValue = parseFloat(value);
+        setData('sur', surValue);
+
+        // Revalider toutes les notes existantes
+        const newErrors = {};
+        data.notes.forEach((note, index) => {
+            if (note.note !== '') {
+                const error = validateNote(note.note, surValue);
+                if (error) {
+                    newErrors[index] = error;
+                }
+            }
+        });
+        setNoteErrors(newErrors);
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        
-        // Filtrer les notes vides
-        const notesWithValues = data.notes.filter(note => note.note !== '');
-        
+
+        // Vérifier s'il y a des erreurs de validation
+        const hasErrors = Object.values(noteErrors).some(error => error !== null);
+        if (hasErrors) {
+            setMessage({ type: 'error', text: 'Veuillez corriger les erreurs dans les notes avant de soumettre' });
+            return;
+        }
+
+        // Filtrer les notes vides et ajouter le champ sur à chaque note
+        const notesWithValues = data.notes
+            .filter(note => note.note !== '')
+            .map(note => ({
+                ...note,
+                sur: data.sur // Ajouter le champ sur global à chaque note
+            }));
+
         if (notesWithValues.length === 0) {
             setMessage({ type: 'error', text: 'Veuillez saisir au moins une note' });
             return;
         }
 
         const submitData = {
-            ...data,
+            composition_id: data.composition_id,
+            matiere_id: data.matiere_id,
+            sur: data.sur,
             notes: notesWithValues
         };
 
@@ -95,6 +251,7 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                     setMessage({ type: 'success', text: result.success });
                     reset();
                     setExistingNotes({});
+                    setNoteErrors({});
                 } else if (result.error) {
                     setMessage({ type: 'error', text: result.error });
                 }
@@ -103,12 +260,6 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                 setMessage({ type: 'error', text: 'Erreur lors de l\'enregistrement' });
             }
         });
-    };
-
-    const updateNote = (index, field, value) => {
-        const updatedNotes = [...data.notes];
-        updatedNotes[index][field] = value;
-        setData('notes', updatedNotes);
     };
 
     const getExistingNote = (inscriptionId, matiereId) => {
@@ -134,10 +285,31 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
         const total = data.notes.length;
         const saisies = data.notes.filter(note => note.note !== '').length;
         const pourcentage = total > 0 ? ((saisies / total) * 100).toFixed(1) : 0;
-        return { total, saisies, pourcentage };
+
+        // Calculer la moyenne des notes saisies
+        const notesSaisies = data.notes.filter(note => note.note !== '');
+        const moyenne = notesSaisies.length > 0
+            ? (notesSaisies.reduce((sum, note) => sum + parseFloat(note.note), 0) / notesSaisies.length).toFixed(2)
+            : 0;
+
+        return { total, saisies, pourcentage, moyenne };
     };
 
     const stats = getStats();
+
+    // Valeurs sélectionnées pour react-select
+    const selectedCompositionValue = compositionOptions.find(opt => opt.value == data.composition_id) || null;
+    const selectedMatiereValue = matiereOptions.find(opt => opt.value == data.matiere_id) || null;
+
+    // Format personnalisé pour l'affichage des matières
+    const formatMatiereLabel = ({ label, coefficient }) => (
+        <div className="flex justify-between items-center">
+            <span>{label.split(' (Coef.')[0]}</span>
+            <span className="text-sm text-purple-600 bg-purple-100 px-2 py-1 rounded font-medium">
+                Coef. {coefficient}
+            </span>
+        </div>
+    );
 
     return (
         <AppLayout>
@@ -158,7 +330,7 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                 Saisissez les notes pour tous les élèves d'une classe
                             </p>
                         </div>
-                        
+
                         <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
                             <span className="text-sm font-medium">Groupée</span>
                         </div>
@@ -167,9 +339,8 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
 
                 {/* Messages */}
                 {(message || flash?.success || flash?.error) && (
-                    <div className={`mx-8 mt-6 p-4 rounded-xl ${
-                        message?.type === 'error' || flash?.error ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'
-                    }`}>
+                    <div className={`mx-8 mt-6 p-4 rounded-xl ${message?.type === 'error' || flash?.error ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'
+                        }`}>
                         <div className="flex items-center">
                             <div className="flex-shrink-0">
                                 {message?.type === 'error' || flash?.error ? (
@@ -183,9 +354,8 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                 )}
                             </div>
                             <div className="ml-3">
-                                <p className={`text-sm font-medium ${
-                                    message?.type === 'error' || flash?.error ? 'text-red-800' : 'text-green-800'
-                                }`}>
+                                <p className={`text-sm font-medium ${message?.type === 'error' || flash?.error ? 'text-red-800' : 'text-green-800'
+                                    }`}>
                                     {message?.text || flash?.success || flash?.error}
                                 </p>
                             </div>
@@ -207,20 +377,14 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Composition *
                                 </label>
-                                <select
-                                    value={data.composition_id}
-                                    onChange={(e) => setData('composition_id', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.composition_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
-                                >
-                                    <option value="">Sélectionnez une composition</option>
-                                    {compositions.map((composition) => (
-                                        <option key={composition.id} value={composition.id}>
-                                            {composition.nom} - {composition.classe?.nom} ({composition.trimestre?.annee_scolaire?.nom})
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    options={compositionOptions}
+                                    value={selectedCompositionValue}
+                                    onChange={(selectedOption) => setData('composition_id', selectedOption?.value || '')}
+                                    styles={customStyles}
+                                    isClearable
+                                    placeholder="Sélectionnez une composition"
+                                />
                                 {errors.composition_id && (
                                     <div className="flex items-center mt-2 text-red-600">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -243,21 +407,16 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Matière *
                                 </label>
-                                <select
-                                    value={data.matiere_id}
-                                    onChange={(e) => setData('matiere_id', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.matiere_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
-                                    disabled={!selectedComposition || loading}
-                                >
-                                    <option value="">Sélectionnez une matière</option>
-                                    {availableMatieres.map((matiere) => (
-                                        <option key={matiere.id} value={matiere.id}>
-                                            {matiere.nom} (Coef. {matiere.coefficient})
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    options={matiereOptions}
+                                    value={selectedMatiereValue}
+                                    onChange={(selectedOption) => setData('matiere_id', selectedOption?.value || '')}
+                                    styles={customStyles}
+                                    isClearable
+                                    isDisabled={!selectedComposition || loading}
+                                    placeholder={!selectedComposition ? "Sélectionnez d'abord une composition" : "Sélectionnez une matière"}
+                                    formatOptionLabel={formatMatiereLabel}
+                                />
                                 {errors.matiere_id && (
                                     <div className="flex items-center mt-2 text-red-600">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -269,6 +428,57 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Paramètre de notation */}
+                    {data.composition_id && data.matiere_id && (
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
+                            <h4 className="text-lg font-semibold text-blue-800 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Paramètre de notation
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                                        Note sur *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="1"
+                                        value={data.sur}
+                                        onChange={(e) => updateSur(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white"
+                                        placeholder="20"
+                                    />
+                                    <p className="text-sm text-gray-500 mt-2">
+                                        Définit la note maximale pour tous les élèves
+                                    </p>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                        <div className="flex items-center">
+                                            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                                            <span>Excellent : ≥ 80%</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                                            <span>Très bien : 60% - 79%</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                                            <span>Passable : 50% - 59%</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                                            <span>Insuffisant : &lt; 50%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {selectedComposition && (
                         <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
@@ -302,7 +512,7 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                 </svg>
                                 Progression de la saisie
                             </h4>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-blue-600">{stats.saisies}</div>
                                     <div className="text-sm text-gray-600">Notes saisies</div>
@@ -315,10 +525,14 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                     <div className="text-2xl font-bold text-gray-600">{stats.total}</div>
                                     <div className="text-sm text-gray-600">Total élèves</div>
                                 </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-purple-600">{stats.moyenne}</div>
+                                    <div className="text-sm text-gray-600">Moyenne</div>
+                                </div>
                             </div>
                             <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                    className="bg-green-600 h-2 rounded-full transition-all duration-500" 
+                                <div
+                                    className="bg-green-600 h-2 rounded-full transition-all duration-500"
                                     style={{ width: `${stats.pourcentage}%` }}
                                 ></div>
                             </div>
@@ -334,14 +548,13 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                 </svg>
                                 Saisie des Notes
                             </h3>
-                            
+
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="bg-gradient-to-r from-gray-50 to-blue-50">
                                             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Élève</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Note</th>
-                                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Sur</th>
+                                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Note / {data.sur}</th>
                                             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">%</th>
                                             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">Appréciation</th>
                                         </tr>
@@ -350,9 +563,9 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                         {data.notes.map((note, index) => {
                                             const inscription = availableEleves.find(e => e.id === note.inscription_id);
                                             const existingNote = getExistingNote(note.inscription_id, data.matiere_id);
-                                            
+
                                             if (!inscription) return null;
-                                            
+
                                             return (
                                                 <tr key={note.inscription_id} className="hover:bg-gray-50 transition-colors">
                                                     <td className="px-4 py-3 border-b">
@@ -375,30 +588,31 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 border-b">
-                                                        <input
-                                                            type="number"
-                                                            step="0.25"
-                                                            min="0"
-                                                            value={note.note}
-                                                            onChange={(e) => updateNote(index, 'note', e.target.value)}
-                                                            className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            placeholder="0.00"
-                                                        />
+                                                        <div className="flex flex-col space-y-1">
+                                                            <input
+                                                                type="number"
+                                                                step="0.25"
+                                                                min="0"
+                                                                max={data.sur}
+                                                                value={note.note}
+                                                                onChange={(e) => updateNote(index, 'note', e.target.value)}
+                                                                className={`w-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${noteErrors[index] ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                                                    }`}
+                                                                placeholder="0.00"
+                                                            />
+                                                            {noteErrors[index] && (
+                                                                <div className="text-xs text-red-600 flex items-center">
+                                                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                    {noteErrors[index]}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-4 py-3 border-b">
-                                                        <input
-                                                            type="number"
-                                                            step="1"
-                                                            min="1"
-                                                            value={note.sur}
-                                                            onChange={(e) => updateNote(index, 'sur', e.target.value)}
-                                                            className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            placeholder="20"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-3 border-b">
-                                                        <div className={`w-16 px-2 py-1 rounded text-center font-medium ${getNoteColor(note.note, note.sur)}`}>
-                                                            {calculatePourcentage(note.note, note.sur)}%
+                                                        <div className={`w-16 px-2 py-1 rounded text-center font-medium ${getNoteColor(note.note, data.sur)}`}>
+                                                            {calculatePourcentage(note.note, data.sur)}%
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 border-b">
@@ -435,7 +649,7 @@ const CreateMultiple = ({ compositions, classes, flash }) => {
                         {data.composition_id && data.matiere_id && (
                             <button
                                 type="submit"
-                                disabled={processing || stats.saisies === 0}
+                                disabled={processing || stats.saisies === 0 || Object.values(noteErrors).some(error => error !== null)}
                                 className="flex items-center justify-center gap-3 px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 transition-all duration-200 transform hover:scale-105 shadow-lg w-full md:w-auto"
                             >
                                 {processing ? (

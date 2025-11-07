@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import Select from 'react-select';
 
 const Index = ({ trimestres, anneeScolaires, filters }) => {
     const { flash } = usePage().props;
@@ -16,6 +17,88 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
         date_fin: '',
         bareme: 20
     });
+
+    // Préparer les options pour react-select
+    const anneeScolaireOptions = useMemo(() => [
+        { value: '', label: 'Sélectionnez une année scolaire' },
+        ...anneeScolaires.map((annee) => ({
+            value: annee.id,
+            label: `${annee.nom} ${annee.actif ? '(Active)' : ''}`,
+            ...annee
+        }))
+    ], [anneeScolaires]);
+
+    const numeroOptions = [
+        { value: '', label: 'Sélectionnez le numéro' },
+        { value: '1', label: '1 - Premier trimestre' },
+        { value: '2', label: '2 - Deuxième trimestre' },
+        { value: '3', label: '3 - Troisième trimestre' }
+    ];
+
+    // Styles personnalisés pour react-select
+    const customStyles = {
+        control: (base, state) => ({
+            ...base,
+            minHeight: '52px',
+            borderRadius: '12px',
+            border: `2px solid ${state.isFocused ? '#3b82f6' : '#e5e7eb'}`,
+            boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.2)' : 'none',
+            '&:hover': {
+                borderColor: state.isFocused ? '#3b82f6' : '#d1d5db'
+            },
+            backgroundColor: 'white'
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#dbeafe' : 'white',
+            color: state.isSelected ? 'white' : '#1f2937',
+            padding: '12px 16px',
+            fontSize: '14px',
+            '&:active': {
+                backgroundColor: state.isSelected ? '#3b82f6' : '#bfdbfe'
+            }
+        }),
+        menu: (base) => ({
+            ...base,
+            borderRadius: '12px',
+            border: '2px solid #e5e7eb',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            zIndex: 9999
+        }),
+        menuList: (base) => ({
+            ...base,
+            borderRadius: '10px',
+            padding: '4px'
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#6b7280',
+            fontSize: '14px'
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#1f2937',
+            fontSize: '14px',
+            fontWeight: '500'
+        }),
+        indicatorSeparator: () => ({
+            display: 'none'
+        }),
+        dropdownIndicator: (base, state) => ({
+            ...base,
+            color: state.isFocused ? '#3b82f6' : '#6b7280',
+            '&:hover': {
+                color: '#3b82f6'
+            }
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#ef4444'
+            }
+        })
+    };
 
     const debounce = (func, wait) => {
         let timeout;
@@ -48,7 +131,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
         setSelectedTrimestre(trimestre);
         setFormData({
             annee_scolaire_id: trimestre.annee_scolaire_id,
-            numero: trimestre.numero,
+            numero: trimestre.numero.toString(),
             nom: trimestre.nom,
             date_debut: trimestre.date_debut,
             date_fin: trimestre.date_fin,
@@ -122,6 +205,10 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
         return trimestre.annee_scolaire?.actif || false;
     };
 
+    // Valeurs sélectionnées pour react-select
+    const selectedAnneeScolaire = anneeScolaireOptions.find(opt => opt.value == formData.annee_scolaire_id) || null;
+    const selectedNumero = numeroOptions.find(opt => opt.value == formData.numero) || null;
+
     return (
         <AppLayout>
             <Head title="Gestion des Trimestres" />
@@ -193,41 +280,86 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                 {/* Filtres et Recherche */}
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                        {/* Champ de recherche */}
                         <div className="lg:w-96">
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
                                 </div>
                                 <input
                                     type="text"
-                                    placeholder="Rechercher un trimestre..."
+                                    placeholder="Rechercher un trimestre par nom, année..."
                                     defaultValue={search}
                                     onChange={(e) => {
                                         setSearch(e.target.value);
                                         handleSearch(e.target.value);
                                     }}
-                                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                                    className="block w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                                 />
+                                {/* Bouton effacer intégré */}
+                                {search && (
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <button
+                                            onClick={() => {
+                                                setSearch('');
+                                                handleSearch('');
+                                            }}
+                                            className="text-gray-400 hover:text-blue-600 transition-colors p-1.5 rounded-full hover:bg-blue-50"
+                                            title="Effacer la recherche"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                            <div className="flex items-center">
-                                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                                En cours
+
+                        {/* Légende des statuts */}
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                            <div className="flex items-center bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                                <div className="w-3 h-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                                <span className="font-medium text-green-700">En cours</span>
                             </div>
-                            <div className="flex items-center">
+                            <div className="flex items-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-200">
                                 <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                                À venir
+                                <span className="font-medium text-blue-700">À venir</span>
                             </div>
-                            <div className="flex items-center">
+                            <div className="flex items-center bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
                                 <div className="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
-                                Terminé
+                                <span className="font-medium text-gray-700">Terminé</span>
                             </div>
                         </div>
                     </div>
+
+                    {/* Indicateur de recherche active */}
+                    {search && (
+                        <div className="mt-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                            <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
+                                <span className="text-sm font-medium text-blue-800">
+                                    Recherche : "<span className="font-semibold">{search}</span>"
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setSearch('');
+                                    handleSearch('');
+                                }}
+                                className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Effacer
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Liste des Trimestres */}
@@ -374,13 +506,12 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                     key={index}
                                     onClick={() => router.get(link.url || '#')}
                                     disabled={!link.url}
-                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                                        link.active
-                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg'
-                                            : link.url
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${link.active
+                                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg'
+                                        : link.url
                                             ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-500 hover:text-blue-600'
                                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                    }`}
+                                        }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ))}
@@ -388,6 +519,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                     </div>
                 )}
             </div>
+
 
             {/* Modal de création */}
             {showCreateModal && (
@@ -397,42 +529,36 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                             <h3 className="text-xl font-bold">Nouveau Trimestre</h3>
                             <p className="text-blue-100 mt-1">Ajouter une nouvelle période d'évaluation</p>
                         </div>
-                        
+
                         <form onSubmit={handleSubmitCreate} className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Année scolaire *
                                 </label>
-                                <select
-                                    value={formData.annee_scolaire_id}
-                                    onChange={(e) => setFormData({...formData, annee_scolaire_id: e.target.value})}
-                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                <Select
+                                    options={anneeScolaireOptions}
+                                    value={selectedAnneeScolaire}
+                                    onChange={(selectedOption) => setFormData({ ...formData, annee_scolaire_id: selectedOption?.value || '' })}
+                                    styles={customStyles}
+                                    placeholder="Sélectionnez une année scolaire"
+                                    isClearable
                                     required
-                                >
-                                    <option value="">Sélectionnez une année scolaire</option>
-                                    {anneeScolaires.map((annee) => (
-                                        <option key={annee.id} value={annee.id}>
-                                            {annee.nom} {annee.actif && '(Active)'}
-                                        </option>
-                                    ))}
-                                </select>
+                                />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Numéro du trimestre *
                                 </label>
-                                <select
-                                    value={formData.numero}
-                                    onChange={(e) => setFormData({...formData, numero: e.target.value})}
-                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                <Select
+                                    options={numeroOptions}
+                                    value={selectedNumero}
+                                    onChange={(selectedOption) => setFormData({ ...formData, numero: selectedOption?.value || '' })}
+                                    styles={customStyles}
+                                    placeholder="Sélectionnez le numéro"
+                                    isClearable
                                     required
-                                >
-                                    <option value="">Sélectionnez le numéro</option>
-                                    <option value="1">1 - Premier trimestre</option>
-                                    <option value="2">2 - Deuxième trimestre</option>
-                                    <option value="3">3 - Troisième trimestre</option>
-                                </select>
+                                />
                             </div>
 
                             <div>
@@ -442,7 +568,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                 <input
                                     type="text"
                                     value={formData.nom}
-                                    onChange={(e) => setFormData({...formData, nom: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                                     placeholder="Ex: Trimestre 1"
                                     required
@@ -457,7 +583,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                     <input
                                         type="date"
                                         value={formData.date_debut}
-                                        onChange={(e) => setFormData({...formData, date_debut: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, date_debut: e.target.value })}
                                         className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                                         required
                                     />
@@ -469,7 +595,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                     <input
                                         type="date"
                                         value={formData.date_fin}
-                                        onChange={(e) => setFormData({...formData, date_fin: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, date_fin: e.target.value })}
                                         className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                                         required
                                     />
@@ -486,7 +612,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                     min="1"
                                     max="100"
                                     value={formData.bareme}
-                                    onChange={(e) => setFormData({...formData, bareme: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, bareme: e.target.value })}
                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Note maximale par défaut pour les évaluations</p>
@@ -520,22 +646,19 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                             <h3 className="text-xl font-bold">Modifier le Trimestre</h3>
                             <p className="text-green-100 mt-1">Mettre à jour les informations du trimestre</p>
                         </div>
-                        
+
                         <form onSubmit={handleSubmitEdit} className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Numéro du trimestre *
                                 </label>
-                                <select
-                                    value={formData.numero}
-                                    onChange={(e) => setFormData({...formData, numero: e.target.value})}
-                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
+                                <Select
+                                    options={numeroOptions.filter(opt => opt.value !== '')}
+                                    value={selectedNumero}
+                                    onChange={(selectedOption) => setFormData({ ...formData, numero: selectedOption?.value || '' })}
+                                    styles={customStyles}
                                     required
-                                >
-                                    <option value="1">1 - Premier trimestre</option>
-                                    <option value="2">2 - Deuxième trimestre</option>
-                                    <option value="3">3 - Troisième trimestre</option>
-                                </select>
+                                />
                             </div>
 
                             <div>
@@ -545,7 +668,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                 <input
                                     type="text"
                                     value={formData.nom}
-                                    onChange={(e) => setFormData({...formData, nom: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                                     placeholder="Ex: Trimestre 1"
                                     required
@@ -560,7 +683,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                     <input
                                         type="date"
                                         value={formData.date_debut}
-                                        onChange={(e) => setFormData({...formData, date_debut: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, date_debut: e.target.value })}
                                         className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                                         required
                                     />
@@ -572,7 +695,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                     <input
                                         type="date"
                                         value={formData.date_fin}
-                                        onChange={(e) => setFormData({...formData, date_fin: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, date_fin: e.target.value })}
                                         className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                                         required
                                     />
@@ -589,7 +712,7 @@ const Index = ({ trimestres, anneeScolaires, filters }) => {
                                     min="1"
                                     max="100"
                                     value={formData.bareme}
-                                    onChange={(e) => setFormData({...formData, bareme: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, bareme: e.target.value })}
                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200"
                                 />
                             </div>

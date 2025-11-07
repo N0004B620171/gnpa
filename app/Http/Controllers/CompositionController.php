@@ -15,16 +15,33 @@ use Illuminate\Support\Facades\Log;
 
 class CompositionController extends Controller
 {
+    // Dans la méthode index du contrôleur
     public function index(Request $request)
     {
         $query = Composition::with(['trimestre.anneeScolaire', 'classe.niveau', 'matieres']);
 
+        // Filtre par recherche textuelle
         if ($request->has('q') && $request->q != '') {
             $search = $request->q;
             $query->where('nom', 'LIKE', "%{$search}%")
                 ->orWhereHas('classe', function ($q) use ($search) {
                     $q->where('nom', 'LIKE', "%{$search}%");
                 });
+        }
+
+        // Filtre par trimestre
+        if ($request->has('trimestre_id') && $request->trimestre_id != '') {
+            $query->where('trimestre_id', $request->trimestre_id);
+        }
+
+        // Filtre par classe
+        if ($request->has('classe_id') && $request->classe_id != '') {
+            $query->where('classe_id', $request->classe_id);
+        }
+
+        // Filtre par type (is_controle)
+        if ($request->has('is_controle') && $request->is_controle != '') {
+            $query->where('is_controle', $request->is_controle === 'true');
         }
 
         $compositions = $query->latest()->paginate(10);
@@ -57,7 +74,10 @@ class CompositionController extends Controller
             'trimestres' => $trimestres,
             'classes' => $classes,
             'filters' => [
-                'q' => $request->q
+                'q' => $request->q,
+                'trimestre_id' => $request->trimestre_id,
+                'classe_id' => $request->classe_id,
+                'is_controle' => $request->is_controle
             ]
         ]);
     }

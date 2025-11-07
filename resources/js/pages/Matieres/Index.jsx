@@ -1,12 +1,105 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import Select from 'react-select';
 
 const Index = ({ matieres, niveaux, professeurs, filters }) => {
     const { flash } = usePage().props;
     const [search, setSearch] = useState(filters.search || '');
     const [niveauId, setNiveauId] = useState(filters.niveau_id || '');
+    const [professeurId, setProfesseurId] = useState(filters.professeur_id || '');
     const [perPage, setPerPage] = useState(filters.perPage || 10);
+
+    // Préparer les options pour react-select
+    const niveauOptions = useMemo(() => [
+        { value: '', label: 'Tous les niveaux' },
+        ...niveaux.map((niveau) => ({
+            value: niveau.id,
+            label: `${niveau.nom} - ${niveau.cycle?.nom}`,
+            ...niveau
+        }))
+    ], [niveaux]);
+
+    const professeurOptions = useMemo(() => [
+        { value: '', label: 'Tous les professeurs' },
+        ...professeurs.map((professeur) => ({
+            value: professeur.id,
+            label: `${professeur.prenom} ${professeur.nom}`,
+            ...professeur
+        }))
+    ], [professeurs]);
+
+    const perPageOptions = [
+        { value: '10', label: '10 par page' },
+        { value: '20', label: '20 par page' },
+        { value: '50', label: '50 par page' }
+    ];
+
+    // Styles personnalisés pour react-select
+    const customStyles = {
+        control: (base, state) => ({
+            ...base,
+            minHeight: '52px',
+            borderRadius: '12px',
+            border: `2px solid ${state.isFocused ? '#3b82f6' : '#e5e7eb'}`,
+            boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.2)' : 'none',
+            '&:hover': {
+                borderColor: state.isFocused ? '#3b82f6' : '#d1d5db'
+            },
+            backgroundColor: 'white'
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#dbeafe' : 'white',
+            color: state.isSelected ? 'white' : '#1f2937',
+            padding: '12px 16px',
+            fontSize: '14px',
+            '&:active': {
+                backgroundColor: state.isSelected ? '#3b82f6' : '#bfdbfe'
+            }
+        }),
+        menu: (base) => ({
+            ...base,
+            borderRadius: '12px',
+            border: '2px solid #e5e7eb',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            zIndex: 50
+        }),
+        menuList: (base) => ({
+            ...base,
+            borderRadius: '10px',
+            padding: '4px'
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#6b7280',
+            fontSize: '14px'
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#1f2937',
+            fontSize: '14px',
+            fontWeight: '500'
+        }),
+        indicatorSeparator: () => ({
+            display: 'none'
+        }),
+        dropdownIndicator: (base, state) => ({
+            ...base,
+            color: state.isFocused ? '#3b82f6' : '#6b7280',
+            '&:hover': {
+                color: '#3b82f6'
+            }
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#ef4444'
+            }
+        })
+    };
 
     const debounce = (func, wait) => {
         let timeout;
@@ -17,22 +110,45 @@ const Index = ({ matieres, niveaux, professeurs, filters }) => {
     };
 
     const handleSearch = debounce((value) => {
-        router.get('/matieres', { search: value, niveau_id: niveauId, perPage }, {
-            preserveState: true,
-            replace: true
-        });
+        updateFilters({ search: value });
     }, 300);
 
-    const handleFilterChange = () => {
-        router.get('/matieres', { search, niveau_id: niveauId, perPage }, {
+    const updateFilters = (newFilters = {}) => {
+        router.get('/matieres', {
+            search: newFilters.search !== undefined ? newFilters.search : search,
+            niveau_id: newFilters.niveau_id !== undefined ? newFilters.niveau_id : niveauId,
+            professeur_id: newFilters.professeur_id !== undefined ? newFilters.professeur_id : professeurId,
+            perPage: newFilters.perPage !== undefined ? newFilters.perPage : perPage
+        }, {
             preserveState: true,
             replace: true
         });
     };
 
-    const handlePerPageChange = (value) => {
+    const handleNiveauChange = (selectedOption) => {
+        const value = selectedOption?.value || '';
+        setNiveauId(value);
+        updateFilters({ niveau_id: value });
+    };
+
+    const handleProfesseurChange = (selectedOption) => {
+        const value = selectedOption?.value || '';
+        setProfesseurId(value);
+        updateFilters({ professeur_id: value });
+    };
+
+    const handlePerPageChange = (selectedOption) => {
+        const value = selectedOption?.value || '10';
         setPerPage(value);
-        router.get('/matieres', { search, niveau_id: niveauId, perPage: value }, {
+        updateFilters({ perPage: value });
+    };
+
+    const resetFilters = () => {
+        setSearch('');
+        setNiveauId('');
+        setProfesseurId('');
+        setPerPage(10);
+        router.get('/matieres', {}, {
             preserveState: true,
             replace: true
         });
@@ -66,6 +182,11 @@ const Index = ({ matieres, niveaux, professeurs, filters }) => {
         if (coefficient >= 2) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
         return 'bg-green-100 text-green-800 border-green-200';
     };
+
+    // Valeurs sélectionnées pour react-select
+    const selectedNiveau = niveauOptions.find(opt => opt.value == niveauId) || null;
+    const selectedProfesseur = professeurOptions.find(opt => opt.value == professeurId) || null;
+    const selectedPerPage = perPageOptions.find(opt => opt.value == perPage.toString()) || perPageOptions[0];
 
     return (
         <AppLayout>
@@ -135,13 +256,17 @@ const Index = ({ matieres, niveaux, professeurs, filters }) => {
                     </div>
                 </div>
 
-                {/* Filtres et Recherche */}
+                {/* Filtres et Recherche avec React Select */}
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-6 space-y-4 lg:space-y-0">
-                        <div className="flex-1">
-                            <div className="relative">
+                    <div className="flex flex-col xl:flex-row gap-4 items-end">
+                        {/* Champ de recherche */}
+                        <div className="w-full xl:flex-1">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                🔍 Recherche
+                            </label>
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
                                 </div>
@@ -153,41 +278,141 @@ const Index = ({ matieres, niveaux, professeurs, filters }) => {
                                         setSearch(e.target.value);
                                         handleSearch(e.target.value);
                                     }}
-                                    className="block w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                                 />
                             </div>
                         </div>
-                        <div className="lg:w-64">
-                            <select
-                                value={niveauId}
-                                onChange={(e) => {
-                                    setNiveauId(e.target.value);
-                                    handleFilterChange();
-                                }}
-                                className="block w-full pl-4 pr-10 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                            >
-                                <option value="">Tous les niveaux</option>
-                                {niveaux.map((niveau) => (
-                                    <option key={niveau.id} value={niveau.id}>
-                                        {niveau.nom} - {niveau.cycle?.nom}
-                                    </option>
-                                ))}
-                            </select>
+
+                        {/* Sélecteur niveau */}
+                        <div className="w-full xl:w-64">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                🎓 Niveau
+                            </label>
+                            <Select
+                                options={niveauOptions}
+                                value={selectedNiveau}
+                                onChange={handleNiveauChange}
+                                styles={customStyles}
+                                isClearable
+                                placeholder="Tous les niveaux"
+                            />
                         </div>
-                        <div className="lg:w-48">
-                            <select
-                                value={perPage}
-                                onChange={(e) => handlePerPageChange(e.target.value)}
-                                className="block w-full pl-4 pr-10 py-3.5 border-2 border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+
+                        {/* Sélecteur professeur */}
+                        <div className="w-full xl:w-64">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                👨‍🏫 Professeur
+                            </label>
+                            <Select
+                                options={professeurOptions}
+                                value={selectedProfesseur}
+                                onChange={handleProfesseurChange}
+                                styles={customStyles}
+                                isClearable
+                                placeholder="Tous les professeurs"
+                            />
+                        </div>
+
+                        {/* Sélecteur résultats par page */}
+                        <div className="w-full xl:w-40">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                📄 Par page
+                            </label>
+                            <Select
+                                options={perPageOptions}
+                                value={selectedPerPage}
+                                onChange={handlePerPageChange}
+                                styles={customStyles}
+                                isSearchable={false}
+                            />
+                        </div>
+
+                        {/* Bouton reset */}
+                        <div className="w-full xl:w-auto">
+                            <button
+                                onClick={resetFilters}
+                                className="w-full xl:w-auto px-6 py-3 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap font-medium h-[52px] group"
                             >
-                                <option value="10">10 par page</option>
-                                <option value="20">20 par page</option>
-                                <option value="50">50 par page</option>
-                            </select>
+                                <svg className="w-4 h-4 flex-shrink-0 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Réinitialiser
+                            </button>
                         </div>
                     </div>
                 </div>
 
+                {/* Indicateurs de filtres actifs */}
+                {(search || niveauId || professeurId) && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <span className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
+                                Filtres actifs :
+                            </span>
+
+                            {search && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-blue-800 flex items-center gap-2 border border-blue-200 shadow-sm">
+                                    <span className="font-medium">Recherche:</span> "{search}"
+                                    <button
+                                        onClick={() => {
+                                            setSearch('');
+                                            updateFilters({ search: '' });
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer la recherche"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+
+                            {niveauId && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-blue-800 flex items-center gap-2 border border-blue-200 shadow-sm">
+                                    <span className="font-medium">Niveau:</span> {niveaux.find(n => n.id == niveauId)?.nom}
+                                    <button
+                                        onClick={() => {
+                                            setNiveauId('');
+                                            updateFilters({ niveau_id: '' });
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer le filtre niveau"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+
+                            {professeurId && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-blue-800 flex items-center gap-2 border border-blue-200 shadow-sm">
+                                    <span className="font-medium">Professeur:</span> {professeurs.find(p => p.id == professeurId)?.prenom} {professeurs.find(p => p.id == professeurId)?.nom}
+                                    <button
+                                        onClick={() => {
+                                            setProfesseurId('');
+                                            updateFilters({ professeur_id: '' });
+                                        }}
+                                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer le filtre professeur"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+
+                            <button
+                                onClick={resetFilters}
+                                className="ml-auto text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Tout effacer
+                            </button>
+                        </div>
+                    </div>
+                )}
                 {/* Liste des Matières */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {matieres.data.map((matiere, index) => {
@@ -374,10 +599,10 @@ const Index = ({ matieres, niveaux, professeurs, filters }) => {
                                     onClick={() => router.get(link.url || '#')}
                                     disabled={!link.url}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${link.active
-                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg'
-                                            : link.url
-                                                ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-500 hover:text-blue-600'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg'
+                                        : link.url
+                                            ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-500 hover:text-blue-600'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                         }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />

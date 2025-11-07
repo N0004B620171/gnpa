@@ -60,32 +60,85 @@ const Index = ({ materiels, filters }) => {
                 {/* Filtres et Recherche */}
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                        {/* Champ de recherche */}
                         <div className="lg:col-span-3">
-                            <div className="relative">
+                            <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-orange-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                     </svg>
                                 </div>
                                 <input
                                     type="text"
                                     placeholder="Rechercher un matériel par nom ou référence..."
-                                    defaultValue={search}
+                                    value={search}
                                     onChange={(e) => {
                                         setSearch(e.target.value);
                                         handleSearch(e.target.value);
                                     }}
-                                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
+                                    className="block w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200 hover:border-gray-300"
                                 />
+                                {/* Bouton effacer intégré */}
+                                {search && (
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <button
+                                            onClick={() => {
+                                                setSearch('');
+                                                handleSearch('');
+                                            }}
+                                            className="text-gray-400 hover:text-orange-600 transition-colors p-1.5 rounded-full hover:bg-orange-50"
+                                            title="Effacer la recherche"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                        
-                        <div className="flex items-center">
-                            <span className="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-xl">
+
+                        {/* Compteur de matériels */}
+                        <div className="flex items-center justify-end lg:justify-start">
+                            <span className="text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 px-4 py-3 rounded-xl flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
                                 {materiels.total} matériel{materiels.total > 1 ? 's' : ''}
                             </span>
                         </div>
                     </div>
+
+                    {/* Indicateur de recherche active */}
+                    {search && (
+                        <div className="mt-4 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm font-semibold text-orange-800 flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                        </svg>
+                                        Recherche active :
+                                    </span>
+                                    <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-orange-800 flex items-center gap-2 border border-orange-200 shadow-sm">
+                                        "{search}"
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setSearch('');
+                                        handleSearch('');
+                                    }}
+                                    className="text-orange-600 hover:text-orange-800 font-medium flex items-center gap-1 text-sm transition-colors"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Effacer
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Liste des Matériels */}
@@ -226,8 +279,8 @@ const Index = ({ materiels, filters }) => {
                             </div>
                             <h3 className="text-xl font-semibold text-gray-900 mb-2">Aucun matériel trouvé</h3>
                             <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                                {search 
-                                    ? 'Aucun matériel ne correspond à vos critères de recherche.' 
+                                {search
+                                    ? 'Aucun matériel ne correspond à vos critères de recherche.'
                                     : 'Commencez par ajouter vos premiers matériels à l\'inventaire.'}
                             </p>
                             <Link
@@ -255,13 +308,12 @@ const Index = ({ materiels, filters }) => {
                                     key={index}
                                     onClick={() => router.get(link.url || '#')}
                                     disabled={!link.url}
-                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                                        link.active
+                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${link.active
                                             ? 'bg-gradient-to-r from-orange-600 to-amber-700 text-white shadow-lg'
                                             : link.url
-                                            ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-orange-500 hover:text-orange-600'
-                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                    }`}
+                                                ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-orange-500 hover:text-orange-600'
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />
                             ))}
