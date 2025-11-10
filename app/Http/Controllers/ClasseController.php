@@ -399,8 +399,11 @@ class ClasseController extends Controller
         return null;
     }
 
-    public function edit(Classe $classe)
+    public function edit($id)
     {
+        $classe = Classe::findOrFail($id);
+
+
         return Inertia::render('Classes/Edit', [
             'classe' => $classe,
             'niveaux' => Niveau::with('cycle')->get(),
@@ -408,8 +411,9 @@ class ClasseController extends Controller
         ]);
     }
 
-    public function update(Request $request, Classe $classe)
+    public function update(Request $request, $id)
     {
+        $classe = Classe::findOrFail($id);
         $request->validate([
             'nom' => 'required|string|max:10',
             'niveau_id' => 'required|exists:niveaux,id',

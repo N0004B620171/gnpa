@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, useForm, Link, usePage } from '@inertiajs/react';
+import Select from 'react-select';
 import AppLayout from '@/Layouts/AppLayout';
 
 const Edit = ({ classe, niveaux, professeurs }) => {
@@ -15,15 +16,126 @@ const Edit = ({ classe, niveaux, professeurs }) => {
         niveaux.find(n => n.id == classe.niveau_id) || null
     );
 
+    // Préparer les options pour React Select
+    const niveauxOptions = useMemo(() =>
+        niveaux.map(niveau => ({
+            value: niveau.id,
+            label: `${niveau.nom} - ${niveau.cycle?.nom}`,
+            data: niveau
+        })),
+        [niveaux]
+    );
+
+    const professeursOptions = useMemo(() => [
+        { value: '', label: 'Aucun professeur assigné' },
+        ...professeurs.map(prof => ({
+            value: prof.id,
+            label: `${prof.prenom} ${prof.nom}${prof.specialite ? ` - ${prof.specialite}` : ''}`,
+            data: prof
+        }))
+    ], [professeurs]);
+
+    // Trouver les valeurs sélectionnées initiales
+    const selectedNiveauOption = useMemo(() =>
+        niveauxOptions.find(option => option.value == classe.niveau_id) || null,
+        [niveauxOptions, classe.niveau_id]
+    );
+
+    const selectedProfesseurOption = useMemo(() =>
+        professeursOptions.find(option => option.value == classe.professeur_id) ||
+        professeursOptions[0], // Premier option "Aucun professeur assigné"
+        [professeursOptions, classe.professeur_id]
+    );
+
     const handleSubmit = (e) => {
         e.preventDefault();
         put(`/classes/${classe.id}`);
     };
 
-    const handleNiveauChange = (niveauId) => {
+    const handleNiveauChange = (selectedOption) => {
+        const niveauId = selectedOption ? selectedOption.value : '';
         setData('niveau_id', niveauId);
-        const niveau = niveaux.find(n => n.id == niveauId);
+        const niveau = selectedOption ? selectedOption.data : null;
         setSelectedNiveau(niveau);
+    };
+
+    const handleProfesseurChange = (selectedOption) => {
+        const professeurId = selectedOption ? selectedOption.value : '';
+        setData('professeur_id', professeurId);
+    };
+
+    // Styles personnalisés pour React Select pour correspondre au design
+    const customStyles = {
+        control: (base, state) => ({
+            ...base,
+            padding: '4px 8px',
+            borderRadius: '12px',
+            borderWidth: '2px',
+            borderColor: state.isFocused
+                ? (errors.niveau_id || errors.professeur_id ? '#ef4444' : '#10b981')
+                : (errors.niveau_id || errors.professeur_id ? '#ef4444' : '#e5e7eb'),
+            boxShadow: state.isFocused
+                ? `0 0 0 4px ${(errors.niveau_id || errors.professeur_id ? '#fecaca' : '#d1fae5')}`
+                : 'none',
+            '&:hover': {
+                borderColor: state.isFocused
+                    ? (errors.niveau_id || errors.professeur_id ? '#ef4444' : '#10b981')
+                    : (errors.niveau_id || errors.professeur_id ? '#ef4444' : '#d1d5db'),
+            },
+            transition: 'all 0.2s',
+            backgroundColor: '#ffffff',
+            minHeight: '56px',
+            fontSize: '16px',
+        }),
+        menu: (base) => ({
+            ...base,
+            borderRadius: '12px',
+            border: '2px solid #e5e7eb',
+            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+            overflow: 'hidden',
+        }),
+        menuList: (base) => ({
+            ...base,
+            padding: 0,
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected
+                ? '#10b981'
+                : state.isFocused
+                    ? '#ecfdf5'
+                    : '#ffffff',
+            color: state.isSelected ? '#ffffff' : '#1f2937',
+            padding: '12px 16px',
+            fontSize: '16px',
+            '&:active': {
+                backgroundColor: '#059669',
+            },
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#1f2937',
+            fontSize: '16px',
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#9ca3af',
+            fontSize: '16px',
+        }),
+        dropdownIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#374151',
+            },
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#374151',
+            },
+        }),
     };
 
     return (
@@ -45,7 +157,7 @@ const Edit = ({ classe, niveaux, professeurs }) => {
                                 Mettez à jour les informations de {classe.nom}
                             </p>
                         </div>
-                        
+
                         {/* Badge statut */}
                         <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
                             <span className="text-sm font-medium">Édition</span>
@@ -62,7 +174,7 @@ const Edit = ({ classe, niveaux, professeurs }) => {
                             </svg>
                             Informations de la classe
                         </h3>
-                        
+
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -72,9 +184,8 @@ const Edit = ({ classe, niveaux, professeurs }) => {
                                     type="text"
                                     value={data.nom}
                                     onChange={(e) => setData('nom', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.nom ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-emerald-500'
-                                    } focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white`}
+                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.nom ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-emerald-500'
+                                        } focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white`}
                                     placeholder="Ex: A, B, 1, 2..."
                                     maxLength={10}
                                 />
@@ -92,20 +203,15 @@ const Edit = ({ classe, niveaux, professeurs }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Niveau *
                                 </label>
-                                <select
-                                    value={data.niveau_id}
-                                    onChange={(e) => handleNiveauChange(e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.niveau_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-emerald-500'
-                                    } focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white`}
-                                >
-                                    <option value="">Sélectionnez un niveau</option>
-                                    {niveaux.map((niveau) => (
-                                        <option key={niveau.id} value={niveau.id}>
-                                            {niveau.nom} - {niveau.cycle?.nom}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    value={selectedNiveauOption}
+                                    onChange={handleNiveauChange}
+                                    options={niveauxOptions}
+                                    placeholder="Sélectionnez un niveau"
+                                    styles={customStyles}
+                                    isSearchable={true}
+                                    noOptionsMessage={() => "Aucun niveau trouvé"}
+                                />
                                 {errors.niveau_id && (
                                     <div className="flex items-center mt-2 text-red-600">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,9 +231,8 @@ const Edit = ({ classe, niveaux, professeurs }) => {
                                     value={data.capacite}
                                     onChange={(e) => setData('capacite', e.target.value)}
                                     min="1"
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.capacite ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-emerald-500'
-                                    } focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white`}
+                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.capacite ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-emerald-500'
+                                        } focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white`}
                                     placeholder="Nombre maximum d'élèves"
                                 />
                                 {errors.capacite && (
@@ -147,19 +252,18 @@ const Edit = ({ classe, niveaux, professeurs }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Professeur principal
                                 </label>
-                                <select
-                                    value={data.professeur_id}
-                                    onChange={(e) => setData('professeur_id', e.target.value)}
-                                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-200 bg-white"
-                                >
-                                    <option value="">Aucun professeur assigné</option>
-                                    {professeurs.map((professeur) => (
-                                        <option key={professeur.id} value={professeur.id}>
-                                            {professeur.prenom} {professeur.nom}
-                                            {professeur.specialite && ` - ${professeur.specialite}`}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    value={selectedProfesseurOption}
+                                    onChange={handleProfesseurChange}
+                                    options={professeursOptions}
+                                    placeholder="Sélectionnez un professeur"
+                                    styles={customStyles}
+                                    isSearchable={true}
+                                    noOptionsMessage={() => "Aucun professeur trouvé"}
+                                />
+                                <div className="text-xs text-gray-500 mt-1">
+                                    Optionnel - vous pouvez assigner un professeur principal à cette classe
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -179,7 +283,7 @@ const Edit = ({ classe, niveaux, professeurs }) => {
                                         {data.nom}
                                     </div>
                                     <div className="text-sm text-emerald-600">
-                                        {selectedNiveau ? 
+                                        {selectedNiveau ?
                                             `${selectedNiveau.nom} - ${selectedNiveau.cycle?.nom}`
                                             : 'Niveau non sélectionné'
                                         }

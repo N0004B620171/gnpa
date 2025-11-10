@@ -195,7 +195,7 @@ const Show = ({ parent }) => {
                                                     </div>
                                                     {eleve.inscriptions?.[0] && (
                                                         <div className="text-sm text-gray-600 mt-1">
-                                                            {eleve.inscriptions[0].classe?.niveau?.nom} - {eleve.inscriptions[0].classe?.nom}
+                                                            {eleve.inscriptions[0].classe?.niveau?.nom}  {eleve.inscriptions[0].classe?.nom}
                                                         </div>
                                                     )}
                                                 </div>

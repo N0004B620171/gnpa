@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Select from 'react-select';
@@ -18,43 +18,122 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
     };
 
     // Préparer les options pour react-select
-    const eleveOptions = eleves.map(eleve => ({
-        value: eleve.id,
-        label: `${eleve.prenom} ${eleve.nom}`,
-        ...eleve
-    }));
+    const eleveOptions = useMemo(() =>
+        eleves.map(eleve => ({
+            value: eleve.id,
+            label: `${eleve.prenom} ${eleve.nom}`,
+            ...eleve
+        })),
+        [eleves]
+    );
 
-    const classeOptions = classes.map(classe => ({
-        value: classe.id,
-        label: `${classe.nom} - ${classe.niveau?.nom}`,
-        ...classe
-    }));
+    const classeOptions = useMemo(() =>
+        classes.map(classe => ({
+            value: classe.id,
+            label: `${classe.niveau?.nom} ${classe.nom} - ${classe.niveau?.cycle ? ` (${classe.niveau.cycle.nom})` : ''}`,
+            ...classe
+        })),
+        [classes]
+    );
 
-    const anneeOptions = anneesScolaires.map(annee => ({
-        value: annee.id,
-        label: annee.nom,
-        ...annee
-    }));
+    const anneeOptions = useMemo(() =>
+        anneesScolaires.map(annee => ({
+            value: annee.id,
+            label: annee.nom,
+            ...annee
+        })),
+        [anneesScolaires]
+    );
+
+    // Trouver les valeurs sélectionnées
+    const selectedEleveOption = useMemo(() =>
+        eleveOptions.find(opt => opt.value == data.eleve_id) || null,
+        [eleveOptions, data.eleve_id]
+    );
+
+    const selectedClasseOption = useMemo(() =>
+        classeOptions.find(opt => opt.value == data.classe_id) || null,
+        [classeOptions, data.classe_id]
+    );
+
+    const selectedAnneeOption = useMemo(() =>
+        anneeOptions.find(opt => opt.value == data.annee_scolaire_id) || null,
+        [anneeOptions, data.annee_scolaire_id]
+    );
 
     const customStyles = {
         control: (base, state) => ({
             ...base,
-            padding: '8px 4px',
+            padding: '4px 8px',
             borderRadius: '12px',
-            border: `2px solid ${errors.eleve_id ? '#ef4444' : '#e5e7eb'}`,
-            boxShadow: state.isFocused ? '0 0 0 4px rgba(59, 130, 246, 0.2)' : 'none',
-            borderColor: state.isFocused ? '#3b82f6' : (errors.eleve_id ? '#ef4444' : '#e5e7eb'),
+            borderWidth: '2px',
+            borderColor: state.isFocused
+                ? (errors.eleve_id || errors.classe_id || errors.annee_scolaire_id ? '#ef4444' : '#3b82f6')
+                : (errors.eleve_id || errors.classe_id || errors.annee_scolaire_id ? '#ef4444' : '#e5e7eb'),
+            boxShadow: state.isFocused
+                ? `0 0 0 4px ${(errors.eleve_id || errors.classe_id || errors.annee_scolaire_id ? '#fecaca' : '#dbeafe')}`
+                : 'none',
             '&:hover': {
-                borderColor: state.isFocused ? '#3b82f6' : (errors.eleve_id ? '#ef4444' : '#d1d5db')
-            }
+                borderColor: state.isFocused
+                    ? (errors.eleve_id || errors.classe_id || errors.annee_scolaire_id ? '#ef4444' : '#3b82f6')
+                    : (errors.eleve_id || errors.classe_id || errors.annee_scolaire_id ? '#ef4444' : '#d1d5db'),
+            },
+            transition: 'all 0.2s',
+            backgroundColor: '#ffffff',
+            minHeight: '56px',
+            fontSize: '16px',
+        }),
+        menu: (base) => ({
+            ...base,
+            borderRadius: '12px',
+            border: '2px solid #e5e7eb',
+            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+            overflow: 'hidden',
+        }),
+        menuList: (base) => ({
+            ...base,
+            padding: 0,
         }),
         option: (base, state) => ({
             ...base,
-            backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#dbeafe' : 'white',
-            color: state.isSelected ? 'white' : '#1f2937',
-            padding: '12px 16px'
-        })
+            backgroundColor: state.isSelected
+                ? '#3b82f6'
+                : state.isFocused
+                    ? '#dbeafe'
+                    : '#ffffff',
+            color: state.isSelected ? '#ffffff' : '#1f2937',
+            padding: '12px 16px',
+            fontSize: '16px',
+            '&:active': {
+                backgroundColor: '#2563eb',
+            },
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#1f2937',
+            fontSize: '16px',
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#9ca3af',
+            fontSize: '16px',
+        }),
+        dropdownIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#374151',
+            },
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#374151',
+            },
+        }),
     };
+
     return (
         <AppLayout>
             <Head title="Nouvelle Inscription" />
@@ -96,7 +175,7 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                             </label>
                             <Select
                                 options={eleveOptions}
-                                value={eleveOptions.find(opt => opt.value == data.eleve_id)}
+                                value={selectedEleveOption}
                                 onChange={(selectedOption) => setData('eleve_id', selectedOption?.value || '')}
                                 placeholder="Rechercher un élève..."
                                 isClearable
@@ -114,7 +193,7 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                         </div>
                     </div>
 
-                    {/* Sélection de la classe et année scolaire */}
+                    {/* Sélection de la classe et année scolaire avec react-select */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
@@ -127,19 +206,15 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Classe *
                                 </label>
-                                <select
-                                    value={data.classe_id}
-                                    onChange={(e) => setData('classe_id', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.classe_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                        } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
-                                >
-                                    <option value="">Sélectionnez une classe</option>
-                                    {classes.map((classe) => (
-                                        <option key={classe.id} value={classe.id}>
-                                            {classe.nom} - {classe.niveau?.nom}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    options={classeOptions}
+                                    value={selectedClasseOption}
+                                    onChange={(selectedOption) => setData('classe_id', selectedOption?.value || '')}
+                                    placeholder="Sélectionnez une classe..."
+                                    isClearable
+                                    styles={customStyles}
+                                    noOptionsMessage={() => "Aucune classe trouvée"}
+                                />
                                 {errors.classe_id && (
                                     <div className="flex items-center mt-2 text-red-600">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -148,6 +223,9 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                         <span className="text-sm">{errors.classe_id}</span>
                                     </div>
                                 )}
+                                <div className="text-xs text-gray-500 mt-1">
+                                    Sélectionnez la classe dans laquelle inscrire l'élève
+                                </div>
                             </div>
                         </div>
 
@@ -162,19 +240,15 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Année Scolaire *
                                 </label>
-                                <select
-                                    value={data.annee_scolaire_id}
-                                    onChange={(e) => setData('annee_scolaire_id', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.annee_scolaire_id ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                        } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
-                                >
-                                    <option value="">Sélectionnez une année scolaire</option>
-                                    {anneesScolaires.map((annee) => (
-                                        <option key={annee.id} value={annee.id}>
-                                            {annee.nom}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    options={anneeOptions}
+                                    value={selectedAnneeOption}
+                                    onChange={(selectedOption) => setData('annee_scolaire_id', selectedOption?.value || '')}
+                                    placeholder="Sélectionnez une année scolaire..."
+                                    isClearable
+                                    styles={customStyles}
+                                    noOptionsMessage={() => "Aucune année scolaire trouvée"}
+                                />
                                 {errors.annee_scolaire_id && (
                                     <div className="flex items-center mt-2 text-red-600">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -183,6 +257,9 @@ const Create = ({ eleves, classes, anneesScolaires }) => {
                                         <span className="text-sm">{errors.annee_scolaire_id}</span>
                                     </div>
                                 )}
+                                <div className="text-xs text-gray-500 mt-1">
+                                    Sélectionnez l'année scolaire pour l'inscription
+                                </div>
                             </div>
                         </div>
                     </div>

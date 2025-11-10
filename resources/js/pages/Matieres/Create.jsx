@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import Select from 'react-select';
 
 const Create = ({ niveaux, professeurs }) => {
     const { data, setData, post, processing, errors } = useForm({
         nom: '',
-        coefficient: 1,
+        coefficient: 1, // Coefficient désactivé à 1
         niveau_id: '',
         professeur_id: ''
     });
@@ -17,13 +18,137 @@ const Create = ({ niveaux, professeurs }) => {
         post('/matieres');
     };
 
-    const handleNiveauChange = (niveauId) => {
+    // Préparer les options pour react-select
+    const niveauOptions = useMemo(() => [
+        { value: '', label: 'Tous les niveaux (Matière générale)', data: null },
+        ...niveaux.map(niveau => ({
+            value: niveau.id,
+            label: `${niveau.nom} - ${niveau.cycle?.nom}`,
+            data: niveau
+        }))
+    ], [niveaux]);
+
+    const professeurOptions = useMemo(() => [
+        { value: '', label: 'Aucun professeur assigné', data: null },
+        ...professeurs.map(professeur => ({
+            value: professeur.id,
+            label: `${professeur.prenom} ${professeur.nom}${professeur.specialite ? ` - ${professeur.specialite}` : ''}`,
+            data: professeur
+        }))
+    ], [professeurs]);
+
+    // Trouver les valeurs sélectionnées
+    const selectedNiveauOption = useMemo(() =>
+        niveauOptions.find(opt => opt.value == data.niveau_id) || niveauOptions[0],
+        [niveauOptions, data.niveau_id]
+    );
+
+    const selectedProfesseurOption = useMemo(() =>
+        professeurOptions.find(opt => opt.value == data.professeur_id) || professeurOptions[0],
+        [professeurOptions, data.professeur_id]
+    );
+
+    const handleNiveauChange = (selectedOption) => {
+        const niveauId = selectedOption ? selectedOption.value : '';
         setData('niveau_id', niveauId);
-        const niveau = niveaux.find(n => n.id == niveauId);
+        const niveau = selectedOption ? selectedOption.data : null;
         setSelectedNiveau(niveau);
     };
 
+    const handleProfesseurChange = (selectedOption) => {
+        const professeurId = selectedOption ? selectedOption.value : '';
+        setData('professeur_id', professeurId);
+    };
+
+    const customStyles = {
+        control: (base, state) => ({
+            ...base,
+            padding: '4px 8px',
+            borderRadius: '12px',
+            borderWidth: '2px',
+            borderColor: state.isFocused
+                ? (errors.niveau_id || errors.professeur_id ? '#ef4444' : '#3b82f6')
+                : (errors.niveau_id || errors.professeur_id ? '#ef4444' : '#e5e7eb'),
+            boxShadow: state.isFocused
+                ? `0 0 0 4px ${(errors.niveau_id || errors.professeur_id ? '#fecaca' : '#dbeafe')}`
+                : 'none',
+            '&:hover': {
+                borderColor: state.isFocused
+                    ? (errors.niveau_id || errors.professeur_id ? '#ef4444' : '#3b82f6')
+                    : (errors.niveau_id || errors.professeur_id ? '#ef4444' : '#d1d5db'),
+            },
+            transition: 'all 0.2s',
+            backgroundColor: '#ffffff',
+            minHeight: '56px',
+            fontSize: '16px',
+        }),
+        menu: (base) => ({
+            ...base,
+            borderRadius: '12px',
+            border: '2px solid #e5e7eb',
+            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+            overflow: 'hidden',
+        }),
+        menuList: (base) => ({
+            ...base,
+            padding: 0,
+        }),
+        option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected
+                ? '#3b82f6'
+                : state.isFocused
+                    ? '#dbeafe'
+                    : '#ffffff',
+            color: state.isSelected ? '#ffffff' : '#1f2937',
+            padding: '12px 16px',
+            fontSize: '16px',
+            '&:active': {
+                backgroundColor: '#2563eb',
+            },
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#1f2937',
+            fontSize: '16px',
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#9ca3af',
+            fontSize: '16px',
+        }),
+        dropdownIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#374151',
+            },
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: '#6b7280',
+            '&:hover': {
+                color: '#374151',
+            },
+        }),
+    };
+
+    const disabledStyles = {
+        ...customStyles,
+        control: (base, state) => ({
+            ...customStyles.control(base, state),
+            backgroundColor: '#f9fafb',
+            borderColor: '#e5e7eb',
+            cursor: 'not-allowed',
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#6b7280',
+        })
+    };
+
     const coefficientOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
 
     return (
         <AppLayout>
@@ -44,7 +169,7 @@ const Create = ({ niveaux, professeurs }) => {
                                 Ajoutez une nouvelle matière à l'établissement
                             </p>
                         </div>
-                        
+
                         {/* Badge statut */}
                         <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
                             <span className="text-sm font-medium">Nouveau</span>
@@ -61,7 +186,7 @@ const Create = ({ niveaux, professeurs }) => {
                             </svg>
                             Informations de la matière
                         </h3>
-                        
+
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -71,9 +196,8 @@ const Create = ({ niveaux, professeurs }) => {
                                     type="text"
                                     value={data.nom}
                                     onChange={(e) => setData('nom', e.target.value)}
-                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${
-                                        errors.nom ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
-                                    } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
+                                    className={`w-full px-4 py-3.5 rounded-xl border-2 ${errors.nom ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-blue-500'
+                                        } focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white`}
                                     placeholder="Ex: Mathématiques, Français, Histoire-Géographie..."
                                 />
                                 {errors.nom && (
@@ -93,14 +217,14 @@ const Create = ({ niveaux, professeurs }) => {
                                 <div className="grid grid-cols-5 gap-2">
                                     {coefficientOptions.map((coeff) => (
                                         <button
+                                            disabled="true"
                                             key={coeff}
                                             type="button"
                                             onClick={() => setData('coefficient', coeff)}
-                                            className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${
-                                                data.coefficient === coeff
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold'
-                                                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
-                                            }`}
+                                            className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${data.coefficient === coeff
+                                                ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold'
+                                                : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
+                                                }`}
                                         >
                                             {coeff}
                                         </button>
@@ -123,20 +247,17 @@ const Create = ({ niveaux, professeurs }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Niveau associé
                                 </label>
-                                <select
-                                    value={data.niveau_id}
-                                    onChange={(e) => handleNiveauChange(e.target.value)}
-                                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white"
-                                >
-                                    <option value="">Tous les niveaux (Matière générale)</option>
-                                    {niveaux.map((niveau) => (
-                                        <option key={niveau.id} value={niveau.id}>
-                                            {niveau.nom} - {niveau.cycle?.nom}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    options={niveauOptions}
+                                    value={selectedNiveauOption}
+                                    onChange={handleNiveauChange}
+                                    placeholder="Sélectionnez un niveau..."
+                                    styles={customStyles}
+                                    isClearable
+                                    noOptionsMessage={() => "Aucun niveau trouvé"}
+                                />
                                 <div className="text-xs text-gray-500 mt-1">
-                                    Laisser vide si la matière est commune à tous les niveaux
+                                    Laisser "Tous les niveaux" si la matière est commune à tous les niveaux
                                 </div>
                             </div>
 
@@ -144,19 +265,18 @@ const Create = ({ niveaux, professeurs }) => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Professeur responsable
                                 </label>
-                                <select
-                                    value={data.professeur_id}
-                                    onChange={(e) => setData('professeur_id', e.target.value)}
-                                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white"
-                                >
-                                    <option value="">Aucun professeur assigné</option>
-                                    {professeurs.map((professeur) => (
-                                        <option key={professeur.id} value={professeur.id}>
-                                            {professeur.prenom} {professeur.nom}
-                                            {professeur.specialite && ` - ${professeur.specialite}`}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select
+                                    options={professeurOptions}
+                                    value={selectedProfesseurOption}
+                                    onChange={handleProfesseurChange}
+                                    placeholder="Sélectionnez un professeur..."
+                                    styles={customStyles}
+                                    isClearable
+                                    noOptionsMessage={() => "Aucun professeur trouvé"}
+                                />
+                                <div className="text-xs text-gray-500 mt-1">
+                                    Optionnel - vous pourrez assigner un professeur plus tard
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -177,13 +297,13 @@ const Create = ({ niveaux, professeurs }) => {
                                             {data.nom || 'Nom de la matière'}
                                         </div>
                                         <div className="text-sm text-blue-600">
-                                            Coefficient: {data.coefficient}
+                                            Coefficient: <span className="font-bold">1</span>
                                         </div>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-xs text-blue-500">Niveau</div>
                                         <div className="text-sm font-bold text-blue-700">
-                                            {selectedNiveau ? 
+                                            {selectedNiveau ?
                                                 `${selectedNiveau.nom}`
                                                 : 'Tous niveaux'
                                             }

@@ -252,194 +252,194 @@ const Index = ({ eleves, classes, filters }) => {
                     </div>
                 </div>
 
-              {/* Filtres et Recherche avec React Select */}
-<div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
-    <div className="flex flex-col xl:flex-row gap-4 items-end">
-        {/* Champ de recherche */}
-        <div className="w-full xl:flex-1">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                🔍 Recherche
-            </label>
-            <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                {/* Filtres et Recherche avec React Select */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 mb-8">
+                    <div className="flex flex-col xl:flex-row gap-4 items-end">
+                        {/* Champ de recherche */}
+                        <div className="w-full xl:flex-1">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                🔍 Recherche
+                            </label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher un élève..."
+                                    defaultValue={search}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        handleSearch(e.target.value);
+                                    }}
+                                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 hover:border-gray-300"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Sélecteur classe */}
+                        <div className="w-full xl:w-48">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                🏫 Classe
+                            </label>
+                            <Select
+                                options={classeOptions}
+                                value={selectedClasse}
+                                onChange={handleClasseChange}
+                                styles={customStyles}
+                                isClearable
+                                placeholder="Toutes"
+                            />
+                        </div>
+
+                        {/* Sélecteur statut parent */}
+                        <div className="w-full xl:w-48">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                👨‍👩‍👧‍👦 Parent
+                            </label>
+                            <Select
+                                options={statutOptions}
+                                value={selectedStatut}
+                                onChange={handleStatutChange}
+                                styles={customStyles}
+                                isClearable
+                                placeholder="Tous"
+                            />
+                        </div>
+
+                        {/* Sélecteur inscription */}
+                        <div className="w-full xl:w-48">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                📝 Inscription
+                            </label>
+                            <Select
+                                options={inscriptionStatutOptions}
+                                value={selectedInscriptionStatut}
+                                onChange={handleInscriptionStatutChange}
+                                styles={customStyles}
+                                isClearable
+                                placeholder="Tous"
+                            />
+                        </div>
+
+                        {/* Sélecteur résultats par page */}
+                        <div className="w-full xl:w-32">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                📄 Par page
+                            </label>
+                            <Select
+                                options={perPageOptions}
+                                value={selectedPerPage}
+                                onChange={handlePerPageChange}
+                                styles={customStyles}
+                                isSearchable={false}
+                            />
+                        </div>
+
+                        {/* Bouton reset */}
+                        <div className="w-full xl:w-auto">
+                            <button
+                                onClick={resetFilters}
+                                className="w-full xl:w-auto px-6 py-3 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap font-medium h-[52px] group"
+                            >
+                                <svg className="w-4 h-4 flex-shrink-0 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Réinitialiser
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <input
-                    type="text"
-                    placeholder="Rechercher un élève..."
-                    defaultValue={search}
-                    onChange={(e) => {
-                        setSearch(e.target.value);
-                        handleSearch(e.target.value);
-                    }}
-                    className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl bg-white placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 hover:border-gray-300"
-                />
-            </div>
-        </div>
 
-        {/* Sélecteur classe */}
-        <div className="w-full xl:w-48">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                🏫 Classe
-            </label>
-            <Select
-                options={classeOptions}
-                value={selectedClasse}
-                onChange={handleClasseChange}
-                styles={customStyles}
-                isClearable
-                placeholder="Toutes"
-            />
-        </div>
+                {/* Indicateurs de filtres actifs */}
+                {(search || classeId || statut || inscriptionStatut) && (
+                    <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-4 mb-6">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <span className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
+                                Filtres actifs :
+                            </span>
 
-        {/* Sélecteur statut parent */}
-        <div className="w-full xl:w-48">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                👨‍👩‍👧‍👦 Parent
-            </label>
-            <Select
-                options={statutOptions}
-                value={selectedStatut}
-                onChange={handleStatutChange}
-                styles={customStyles}
-                isClearable
-                placeholder="Tous"
-            />
-        </div>
+                            {search && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <span className="font-medium">Recherche:</span> "{search}"
+                                    <button
+                                        onClick={() => {
+                                            setSearch('');
+                                            updateFilters({ search: '' });
+                                        }}
+                                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer la recherche"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
 
-        {/* Sélecteur inscription */}
-        <div className="w-full xl:w-48">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                📝 Inscription
-            </label>
-            <Select
-                options={inscriptionStatutOptions}
-                value={selectedInscriptionStatut}
-                onChange={handleInscriptionStatutChange}
-                styles={customStyles}
-                isClearable
-                placeholder="Tous"
-            />
-        </div>
+                            {classeId && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <span className="font-medium">Classe:</span> {classes.find(c => c.id == classeId)?.nom}
+                                    <button
+                                        onClick={() => {
+                                            setClasseId('');
+                                            updateFilters({ classe_id: '' });
+                                        }}
+                                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer le filtre classe"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
 
-        {/* Sélecteur résultats par page */}
-        <div className="w-full xl:w-32">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                📄 Par page
-            </label>
-            <Select
-                options={perPageOptions}
-                value={selectedPerPage}
-                onChange={handlePerPageChange}
-                styles={customStyles}
-                isSearchable={false}
-            />
-        </div>
+                            {statut && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <span className="font-medium">Parent:</span> {statut === 'avec_parent' ? 'Avec parent' : 'Sans parent'}
+                                    <button
+                                        onClick={() => {
+                                            setStatut('');
+                                            updateFilters({ statut: '' });
+                                        }}
+                                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer le filtre parent"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
 
-        {/* Bouton reset */}
-        <div className="w-full xl:w-auto">
-            <button
-                onClick={resetFilters}
-                className="w-full xl:w-auto px-6 py-3 border-2 border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap font-medium h-[52px] group"
-            >
-                <svg className="w-4 h-4 flex-shrink-0 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Réinitialiser
-            </button>
-        </div>
-    </div>
-</div>
+                            {inscriptionStatut && (
+                                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
+                                    <span className="font-medium">Inscription:</span> {inscriptionStatut === 'inscrit' ? 'Inscrits' : 'Non inscrits'}
+                                    <button
+                                        onClick={() => {
+                                            setInscriptionStatut('');
+                                            updateFilters({ inscription_statut: '' });
+                                        }}
+                                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
+                                        title="Supprimer le filtre inscription"
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
 
-{/* Indicateurs de filtres actifs */}
-{(search || classeId || statut || inscriptionStatut) && (
-    <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-                Filtres actifs :
-            </span>
-            
-            {search && (
-                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
-                    <span className="font-medium">Recherche:</span> "{search}"
-                    <button
-                        onClick={() => {
-                            setSearch('');
-                            updateFilters({ search: '' });
-                        }}
-                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
-                        title="Supprimer la recherche"
-                    >
-                        ×
-                    </button>
-                </span>
-            )}
-            
-            {classeId && (
-                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
-                    <span className="font-medium">Classe:</span> {classes.find(c => c.id == classeId)?.nom}
-                    <button
-                        onClick={() => {
-                            setClasseId('');
-                            updateFilters({ classe_id: '' });
-                        }}
-                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
-                        title="Supprimer le filtre classe"
-                    >
-                        ×
-                    </button>
-                </span>
-            )}
-            
-            {statut && (
-                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
-                    <span className="font-medium">Parent:</span> {statut === 'avec_parent' ? 'Avec parent' : 'Sans parent'}
-                    <button
-                        onClick={() => {
-                            setStatut('');
-                            updateFilters({ statut: '' });
-                        }}
-                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
-                        title="Supprimer le filtre parent"
-                    >
-                        ×
-                    </button>
-                </span>
-            )}
-            
-            {inscriptionStatut && (
-                <span className="bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg text-sm text-emerald-800 flex items-center gap-2 border border-emerald-200 shadow-sm">
-                    <span className="font-medium">Inscription:</span> {inscriptionStatut === 'inscrit' ? 'Inscrits' : 'Non inscrits'}
-                    <button
-                        onClick={() => {
-                            setInscriptionStatut('');
-                            updateFilters({ inscription_statut: '' });
-                        }}
-                        className="text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 rounded-full w-5 h-5 flex items-center justify-center transition-colors ml-1"
-                        title="Supprimer le filtre inscription"
-                    >
-                        ×
-                    </button>
-                </span>
-            )}
-            
-            <button
-                onClick={resetFilters}
-                className="ml-auto text-sm text-emerald-600 hover:text-emerald-800 font-medium flex items-center gap-1 transition-colors"
-            >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Tout effacer
-            </button>
-        </div>
-    </div>
-)}
+                            <button
+                                onClick={resetFilters}
+                                className="ml-auto text-sm text-emerald-600 hover:text-emerald-800 font-medium flex items-center gap-1 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Tout effacer
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Liste des Élèves */}
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
@@ -581,9 +581,8 @@ const Index = ({ eleves, classes, filters }) => {
                                                 {inscriptionActuelle ? (
                                                     <div className="space-y-1">
                                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800">
-                                                            {inscriptionActuelle.classe?.niveau?.cycle?.nom} - {inscriptionActuelle.classe?.niveau?.nom}
+                                                        {inscriptionActuelle.classe?.niveau?.nom}  {inscriptionActuelle.classe?.nom}
                                                         </span>
-                                                        <div className="text-xs text-gray-600">{inscriptionActuelle.classe?.nom}</div>
                                                     </div>
                                                 ) : (
                                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
@@ -671,10 +670,10 @@ const Index = ({ eleves, classes, filters }) => {
                                     onClick={() => router.get(link.url || '#')}
                                     disabled={!link.url}
                                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${link.active
-                                            ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg'
-                                            : link.url
-                                                ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-emerald-500 hover:text-emerald-600'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-lg'
+                                        : link.url
+                                            ? 'bg-white text-gray-700 border-2 border-gray-200 hover:border-emerald-500 hover:text-emerald-600'
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                         }`}
                                     dangerouslySetInnerHTML={{ __html: link.label }}
                                 />

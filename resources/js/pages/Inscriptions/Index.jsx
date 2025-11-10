@@ -16,7 +16,7 @@ const Index = ({ inscriptions, classes, niveaux, filters }) => {
         { value: '', label: 'Tous les niveaux' },
         ...niveaux.map((niveau) => ({
             value: niveau.id,
-            label: `${niveau.nom} - ${niveau.cycle?.nom}`,
+            label: `${niveau.nom}`,
             ...niveau
         }))
     ], [niveaux]);
@@ -30,7 +30,7 @@ const Index = ({ inscriptions, classes, niveaux, filters }) => {
             { value: '', label: 'Toutes les classes' },
             ...filteredClasses.map((classe) => ({
                 value: classe.id,
-                label: `${classe.nom} - ${classe.niveau?.nom}`,
+                label: `${classe.niveau?.nom} ${classe.nom}`,
                 ...classe
             }))
         ];
@@ -458,7 +458,6 @@ const Index = ({ inscriptions, classes, niveaux, filters }) => {
                                                     <h3 className="text-lg font-semibold text-gray-900">
                                                         {inscription.eleve?.prenom} {inscription.eleve?.nom}
                                                     </h3>
-                                                    <p className="text-sm text-gray-600">{inscription.classe?.nom}</p>
                                                 </div>
                                             </div>
                                             <div className={`px-3 py-1 rounded-full text-sm font-medium border-2 ${getStatusColor(inscription.statut)}`}>
@@ -477,7 +476,8 @@ const Index = ({ inscriptions, classes, niveaux, filters }) => {
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <div className="text-sm text-gray-600">
-                                                    Niveau: {inscription.classe?.niveau?.nom}
+                                                    {inscription.classe?.niveau?.nom}  {inscription.classe?.nom}
+
                                                 </div>
                                                 <div className="flex space-x-2">
                                                     <Link
@@ -534,8 +534,7 @@ const Index = ({ inscriptions, classes, niveaux, filters }) => {
                                         </div>
                                         <div className="col-span-2">
                                             <div className="text-lg font-medium text-gray-900">
-                                                {inscription.classe?.nom}
-                                            </div>
+                                                {inscription.classe?.niveau?.nom}  {inscription.classe?.nom}                                            </div>
                                         </div>
                                         <div className="col-span-2">
                                             <div className="text-lg font-medium text-gray-900">
@@ -545,9 +544,6 @@ const Index = ({ inscriptions, classes, niveaux, filters }) => {
                                         <div className="col-span-2">
                                             <div className="text-sm text-gray-900">
                                                 {new Date(inscription.date_inscription).toLocaleDateString('fr-FR')}
-                                            </div>
-                                            <div className="text-sm text-gray-600">
-                                                {new Date(inscription.date_inscription).toLocaleTimeString('fr-FR')}
                                             </div>
                                         </div>
                                         <div className="col-span-2">

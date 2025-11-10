@@ -126,7 +126,7 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                         <div>
                             <h1 className="text-3xl font-bold">Détail de l'Inscription</h1>
                             <p className="text-blue-100 mt-2 text-lg">
-                                {inscription.eleve.prenom} {inscription.eleve.nom} - {inscription.classe.nom}
+                                {inscription?.eleve?.prenom} {inscription?.eleve?.nom} - {inscription?.classe?.niveau?.nom} {inscription?.classe?.nom}
                             </p>
                             <div className="flex flex-wrap gap-4 mt-4 text-blue-200 text-sm">
                                 <div className="flex items-center">
@@ -185,8 +185,8 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                             <button
                                 onClick={() => setActiveTab('informations')}
                                 className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'informations'
-                                        ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,8 +197,8 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                             <button
                                 onClick={() => setActiveTab('services')}
                                 className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'services'
-                                        ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,8 +209,8 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                             <button
                                 onClick={() => setActiveTab('factures')}
                                 className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'factures'
-                                        ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,8 +221,8 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                             <button
                                 onClick={() => setActiveTab('transport')}
                                 className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'transport'
-                                        ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,8 +233,8 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                             <button
                                 onClick={() => setActiveTab('bulletins')}
                                 className={`flex-1 min-w-0 py-4 px-6 text-center font-medium text-sm transition-all duration-200 ${activeTab === 'bulletins'
-                                        ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
                                 <svg className="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,11 +299,11 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                                         <div className="space-y-3">
                                             <div>
                                                 <span className="font-medium text-green-700">Classe :</span>
-                                                <span className="ml-2 text-green-900">{inscription.classe.nom}</span>
+                                                <span className="ml-2 text-green-900">{inscription?.classe?.niveau?.nom} {inscription?.classe?.nom}</span>
                                             </div>
                                             <div>
                                                 <span className="font-medium text-green-700">Niveau :</span>
-                                                <span className="ml-2 text-green-900">{inscription.classe.niveau.nom}</span>
+                                                <span className="ml-2 text-green-900">{inscription?.classe?.niveau?.nom}</span>
                                             </div>
                                             <div>
                                                 <span className="font-medium text-green-700">Année Scolaire :</span>
@@ -473,8 +473,8 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                                                     <div>
                                                         <span className="font-medium text-purple-700">Type :</span>
                                                         <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${ciblage.service.obligatoire
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : 'bg-blue-100 text-blue-800'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-blue-100 text-blue-800'
                                                             }`}>
                                                             {ciblage.service.obligatoire ? 'Obligatoire' : 'Optionnel'}
                                                         </span>
@@ -690,8 +690,8 @@ const Show = ({ inscription, serviceCiblages, services, itineraires, arrets }) =
                                                 </div>
                                             </div>
                                             <div className={`px-3 py-1 rounded-full text-sm font-medium border-2 ${inscription.affectation_transport.actif
-                                                    ? 'text-green-600 bg-green-50 border-green-200'
-                                                    : 'text-red-600 bg-red-50 border-red-200'
+                                                ? 'text-green-600 bg-green-50 border-green-200'
+                                                : 'text-red-600 bg-red-50 border-red-200'
                                                 }`}>
                                                 {inscription.affectation_transport.actif ? 'Actif' : 'Inactif'}
                                             </div>
